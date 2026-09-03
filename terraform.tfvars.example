@@ -3,8 +3,8 @@
 
 project_id  = "freyr-ai"
 bucket_name = "freyr-ai-app-assets"
-region      = "us-central1"
-location    = "US"
+region      = "us-east1"
+location    = "us-east1"
 
 # Optional overrides (defaults are shown)
 # storage_class                 = "STANDARD"

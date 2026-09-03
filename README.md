@@ -103,8 +103,8 @@ git remote add github https://github.com/panugantisailalithasri/Google-Cloud-Sto
 | --- | --- | --- |
 | `project_id` | GCP project ID | `freyr-ai` |
 | `bucket_name` | Globally unique bucket name | *(required)* |
-| `region` | Provider default region | `us-central1` |
-| `location` | Bucket location (`US`, `EU`, `us-central1`, …) | `US` |
+| `region` | Provider default region | `us-east1` |
+| `location` | Bucket location (`us-east1`, `US`, `EU`, …) | `us-east1` |
 | `storage_class` | `STANDARD`, `NEARLINE`, `COLDLINE`, or `ARCHIVE` | `STANDARD` |
 | `versioning_enabled` | Enable object versioning | `true` |
 | `force_destroy` | Allow Terraform to delete objects on destroy | `false` |

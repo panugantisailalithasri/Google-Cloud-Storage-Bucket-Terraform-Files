@@ -7,7 +7,7 @@ variable "project_id" {
 variable "region" {
   description = "Default GCP region for the provider (does not have to match bucket location)."
   type        = string
-  default     = "us-central1"
+  default     = "us-east1"
 }
 
 variable "bucket_name" {
@@ -21,9 +21,9 @@ variable "bucket_name" {
 }
 
 variable "location" {
-  description = "Bucket location. Use a region (us-central1), dual-region (NAM4), or multi-region (US, EU, ASIA)."
+  description = "Bucket location. Use a region (us-east1), dual-region (NAM4), or multi-region (US, EU, ASIA)."
   type        = string
-  default     = "US"
+  default     = "us-east1"
 }
 
 variable "storage_class" {
