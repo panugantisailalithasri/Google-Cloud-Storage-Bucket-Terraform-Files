@@ -1,8 +1,8 @@
 # Copy this file to terraform.tfvars and fill in your values:
 #   cp terraform.tfvars.example terraform.tfvars
 
-project_id  = "my-gcp-project"
-bucket_name = "my-company-app-assets"
+project_id  = "freyr-ai"
+bucket_name = "freyr-ai-app-assets"
 region      = "us-central1"
 location    = "US"
 

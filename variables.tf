@@ -1,6 +1,7 @@
 variable "project_id" {
   description = "GCP project ID where the bucket will be created."
   type        = string
+  default     = "freyr-ai"
 }
 
 variable "region" {

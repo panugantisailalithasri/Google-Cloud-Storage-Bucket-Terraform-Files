@@ -1,10 +1,12 @@
 # GCP Cloud Storage bucket (Terraform)
 
-Terraform configuration that creates a Google Cloud Storage bucket with private access, uniform IAM, versioning, and a lifecycle rule that cleans up old object versions.
+Terraform configuration that creates a Google Cloud Storage bucket in the **freyr-ai** GCP project, with private access, uniform IAM, versioning, and a lifecycle rule that cleans up old object versions.
+
+Remote state is stored in GCS at `gs://terraform-dev-agent/google-cloud-storage-bucket`.
 
 ## What it creates
 
-- One Cloud Storage bucket in the project and location you specify
+- One Cloud Storage bucket in `freyr-ai` (override with `project_id` if needed)
 - Uniform bucket-level access (IAM only; object ACLs are disabled)
 - Public access prevention set to `enforced`
 - Object versioning enabled by default
@@ -22,33 +24,38 @@ gcloud storage buckets add-iam-policy-binding gs://BUCKET_NAME \
 ## Prerequisites
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) 1.5 or later
-- A GCP project with billing enabled
+- Access to GCP project `freyr-ai` with billing enabled
 - The Cloud Storage API enabled
-- Credentials that can create buckets (`roles/storage.admin` is enough)
+- Credentials that can create buckets (`roles/storage.admin` on `freyr-ai`)
+- Access to the existing state bucket `terraform-dev-agent` (`roles/storage.objectAdmin` on that bucket)
 
 Authenticate with Application Default Credentials:
 
 ```bash
 gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project freyr-ai
 gcloud services enable storage.googleapis.com
 ```
 
 ## Usage
 
-1. Copy the example variables and set your project and a globally unique bucket name:
+1. Copy the example variables and set a globally unique bucket name:
 
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    ```
 
-2. Initialize Terraform, review the plan, and apply:
+   `project_id` defaults to `freyr-ai`. You only need to change `bucket_name`.
+
+2. Initialize Terraform (this configures the GCS backend), review the plan, and apply:
 
    ```bash
    terraform init
    terraform plan
    terraform apply
    ```
+
+   State is written to `gs://terraform-dev-agent/google-cloud-storage-bucket/default.tfstate`. Do not commit local `.tfstate` files.
 
 3. After apply, Terraform prints the bucket name and `gs://` URL.
 
@@ -60,11 +67,41 @@ terraform destroy
 
 Destroy fails if the bucket still has objects and `force_destroy` is `false` (the default). Empty the bucket first, or set `force_destroy = true` only in throwaway environments.
 
+## Remote state
+
+| Setting | Value |
+| --- | --- |
+| Backend | `gcs` |
+| Bucket | `terraform-dev-agent` |
+| Prefix | `google-cloud-storage-bucket` |
+
+The `terraform-dev-agent` bucket must already exist. Terraform will not create it. After `terraform init`, all `plan` / `apply` / `destroy` operations read and write state in that bucket instead of a local file.
+
+## Git remotes
+
+Push every change to **both** remotes:
+
+```bash
+git push origin main
+git push github main
+```
+
+| Remote | URL |
+| --- | --- |
+| `origin` | Origin (`freyr-digital/gcp-storage-terraform`) |
+| `github` | https://github.com/panugantisailalithasri/Google-Cloud-Storage-Bucket-Terraform-Files.git |
+
+Add the GitHub remote after clone if it is missing:
+
+```bash
+git remote add github https://github.com/panugantisailalithasri/Google-Cloud-Storage-Bucket-Terraform-Files.git
+```
+
 ## Variables
 
 | Name | Description | Default |
 | --- | --- | --- |
-| `project_id` | GCP project ID | *(required)* |
+| `project_id` | GCP project ID | `freyr-ai` |
 | `bucket_name` | Globally unique bucket name | *(required)* |
 | `region` | Provider default region | `us-central1` |
 | `location` | Bucket location (`US`, `EU`, `us-central1`, …) | `US` |
@@ -87,4 +124,3 @@ Destroy fails if the bucket still has objects and `force_destroy` is `false` (th
 ## Notes
 
 - Bucket names are a global namespace. If apply fails with a name conflict, choose another `bucket_name`.
-- This config uses local Terraform state. For a team or production use, add a remote backend (GCS or Terraform Cloud) before the first apply.
