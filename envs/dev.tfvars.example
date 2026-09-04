@@ -1,0 +1,28 @@
+# Example values for the dev environment.
+# product_name is passed by Azure DevOps (or locally):
+#   terraform plan -var="product_name=via-supervisor" -var-file=../envs/dev.tfvars.example
+
+project_id  = "freyr-ai"
+region      = "us-east1"
+environment = "dev"
+
+buckets = {
+  assets = {
+    force_destroy = true
+  }
+}
+
+secret_keys = [
+  "app-config",
+]
+
+# Set image to a pinned Artifact Registry tag or digest for this product.
+# cloud_run = {
+#   image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:dev-123"
+#   min_instances       = 0
+#   max_instances       = 2
+#   deletion_protection = false
+#   secret_env_vars = {
+#     APP_CONFIG = "app-config"
+#   }
+# }

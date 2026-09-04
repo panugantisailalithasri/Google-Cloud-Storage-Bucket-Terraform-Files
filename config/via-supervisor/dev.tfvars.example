@@ -1,0 +1,13 @@
+# Optional product overlay for via-supervisor in dev.
+# Pipeline: -var-file=../config/<product>/<env>.tfvars.example
+# product_name and environment still come from ADO parameters.
+
+buckets = {
+  assets = {
+    force_destroy = true
+  }
+}
+
+secret_keys = [
+  "app-config",
+]

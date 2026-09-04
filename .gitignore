@@ -10,11 +10,12 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+backend.hcl
 
-# Variable files with real values (keep the example)
+# Variable files with real values (keep examples)
 *.tfvars
 *.tfvars.json
-!terraform.tfvars.example
+!*.tfvars.example
 
 # Editor / OS
 .DS_Store

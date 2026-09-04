@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
     bucket = "terraform-dev-agent"
-    prefix = "google-cloud-storage-bucket"
+    # prefix is supplied at init: PRODUCT_NAME/ENVIRONMENT
   }
 }

@@ -1,0 +1,27 @@
+# Example values for the prod environment.
+# product_name is passed by Azure DevOps (or locally):
+#   terraform plan -var="product_name=via-supervisor" -var-file=../envs/prod.tfvars.example
+
+project_id  = "freyr-ai"
+region      = "us-east1"
+environment = "prod"
+
+buckets = {
+  assets = {
+    force_destroy = false
+  }
+}
+
+secret_keys = [
+  "app-config",
+]
+
+# cloud_run = {
+#   image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:1.2.3"
+#   min_instances       = 1
+#   max_instances       = 10
+#   deletion_protection = true
+#   secret_env_vars = {
+#     APP_CONFIG = "app-config"
+#   }
+# }

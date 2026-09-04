@@ -1,126 +1,148 @@
-# GCP Cloud Storage bucket (Terraform)
+# GCP Terraform modules for agents and microservices
 
-Terraform configuration that creates a Google Cloud Storage bucket in the **freyr-ai** GCP project, with private access, uniform IAM, versioning, and a lifecycle rule that cleans up old object versions.
+Reusable Terraform modules for **Cloud Storage**, **IAM**, **Secret Manager**, and **Cloud Run**. A single composition stack in `infra/` is reused for every product (for example `via-supervisor`) and environment (`dev`, `prod`). Names, labels, and state paths are derived from variables — not hardcoded product or env values.
 
-Remote state is stored in GCS at `gs://terraform-dev-agent/google-cloud-storage-bucket`.
+Azure DevOps runs Checkov, then `terraform plan` / `apply`, with state in `gs://terraform-dev-agent/<product>/<env>`.
 
-## What it creates
+## Layout
 
-- One Cloud Storage bucket in `freyr-ai` (override with `project_id` if needed)
-- Uniform bucket-level access (IAM only; object ACLs are disabled)
-- Public access prevention set to `enforced`
-- Object versioning enabled by default
-- Soft-delete retention of 7 days (recoverable deletes)
-- Lifecycle rule that deletes noncurrent versions after 90 days
-
-The bucket is **not** public. Grant access with IAM after apply, for example:
-
-```bash
-gcloud storage buckets add-iam-policy-binding gs://BUCKET_NAME \
-  --member="user:you@example.com" \
-  --role="roles/storage.objectAdmin"
 ```
+modules/gcs-bucket/       Cloud Storage bucket (private, versioned, UBLA)
+modules/iam/              Runtime service account (no keys, no primitive roles)
+modules/secret-manager/   Secret containers + accessor IAM (no secret payloads)
+modules/cloud-run/        Cloud Run v2 service (authenticated, pinned image)
+infra/                    Composition stack used by ADO
+envs/                     Environment defaults (dev / prod)
+config/<product>/         Optional per-product overlay
+azure-pipelines.yml       Checkov + plan/apply
+scripts/scan.sh           Local Checkov scan
+```
+
+## What a stack creates
+
+For `product_name=via-supervisor` and `environment=dev` in project `freyr-ai`:
+
+| Resource | Derived name |
+| --- | --- |
+| Runtime service account | `via-supervisor-dev-run` |
+| Bucket key `assets` | `freyr-ai-via-supervisor-dev-assets` |
+| Secret key `app-config` | `via-supervisor-dev-app-config` |
+| Cloud Run service | `via-supervisor-dev` |
+| Terraform state | `gs://terraform-dev-agent/via-supervisor/dev` |
+
+The same modules and `infra/` code are used for every other agent. Add `config/<product>/<env>.tfvars` (or a `.example`) and pass `productName` / `environment` in the pipeline.
+
+## Variables that must stay dynamic
+
+Pass these at plan/apply time (ADO parameters or `-var`):
+
+| Variable | Example | Purpose |
+| --- | --- | --- |
+| `product_name` | `via-supervisor` | Names, labels, state prefix |
+| `environment` | `dev` or `prod` | Names, labels, env tfvars |
+
+Do not default `product_name` or `environment` inside modules. Env files may set `environment` as a convenience; ADO still passes both explicitly so the pipeline is the source of truth.
+
+## Security defaults
+
+- Buckets: uniform bucket-level access, `public_access_prevention = enforced`, versioning, no `allUsers`
+- IAM: no service account keys; `roles/owner`, `roles/editor`, and `roles/viewer` are rejected
+- Secrets: Terraform creates the secret resource only. Put values in Secret Manager or ADO secret variables, never in tfvars
+- Cloud Run: dedicated runtime SA, CPU/memory limits, Gen2, no unauthenticated invokers, image tag `:latest` rejected
+- Runtime SA gets `logWriter`, `metricWriter`, and `artifactregistry.reader` at project scope; storage and secret access is on the resource, not the project
 
 ## Prerequisites
 
-- [Terraform](https://developer.hashicorp.com/terraform/install) 1.5 or later
-- Access to GCP project `freyr-ai` with billing enabled
-- The Cloud Storage API enabled
-- Credentials that can create buckets (`roles/storage.admin` on `freyr-ai`)
-- Access to the existing state bucket `terraform-dev-agent` (`roles/storage.objectAdmin` on that bucket)
-
-Authenticate with Application Default Credentials:
+- Terraform >= 1.5
+- GCP project `freyr-ai` (override with `project_id`)
+- APIs: Storage, Cloud Run, Secret Manager, IAM, Artifact Registry
+- Access to state bucket `terraform-dev-agent` (`roles/storage.objectAdmin`)
+- For apply: credentials that can create the resources above
 
 ```bash
 gcloud auth application-default login
 gcloud config set project freyr-ai
-gcloud services enable storage.googleapis.com
 ```
 
-## Usage
-
-1. Copy the example variables and set a globally unique bucket name:
-
-   ```bash
-   cp terraform.tfvars.example terraform.tfvars
-   ```
-
-   `project_id` defaults to `freyr-ai`. You only need to change `bucket_name`.
-
-2. Initialize Terraform (this configures the GCS backend), review the plan, and apply:
-
-   ```bash
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-   State is written to `gs://terraform-dev-agent/google-cloud-storage-bucket/default.tfstate`. Do not commit local `.tfstate` files.
-
-3. After apply, Terraform prints the bucket name and `gs://` URL.
-
-To tear the bucket down:
+## Local usage
 
 ```bash
-terraform destroy
+cd infra
+cp backend.hcl.example backend.hcl   # set prefix to PRODUCT/ENV
+terraform init -backend-config=backend.hcl
+
+terraform plan \
+  -var="product_name=via-supervisor" \
+  -var="environment=dev" \
+  -var-file=../envs/dev.tfvars.example \
+  -var-file=../config/via-supervisor/dev.tfvars.example
+
+terraform apply \
+  -var="product_name=via-supervisor" \
+  -var="environment=dev" \
+  -var-file=../envs/dev.tfvars.example \
+  -var-file=../config/via-supervisor/dev.tfvars.example
 ```
 
-Destroy fails if the bucket still has objects and `force_destroy` is `false` (the default). Empty the bucket first, or set `force_destroy = true` only in throwaway environments.
+Add a Cloud Run service by setting `cloud_run` in the product tfvars. Pin an image tag or digest (not `:latest`):
 
-## Remote state
+```hcl
+cloud_run = {
+  image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:1.2.3"
+  min_instances       = 0
+  max_instances       = 2
+  deletion_protection = false
+  secret_env_vars = {
+    APP_CONFIG = "app-config"
+  }
+}
+```
 
-| Setting | Value |
-| --- | --- |
-| Backend | `gcs` |
-| Bucket | `terraform-dev-agent` |
-| Prefix | `google-cloud-storage-bucket` |
+`APP_CONFIG` maps to the secret short name in `secret_keys`. The stack wires the runtime SA as accessor.
 
-The `terraform-dev-agent` bucket must already exist. Terraform will not create it. After `terraform init`, all `plan` / `apply` / `destroy` operations read and write state in that bucket instead of a local file.
+## Azure DevOps
 
-## Git remotes
+1. Create pipeline from `azure-pipelines.yml`.
+2. Add secret variable `GCP_SERVICE_ACCOUNT_JSON` (JSON key or WIF-injected credentials) on the pipeline or in a variable group.
+3. Create ADO environments `gcp-dev` and `gcp-prod`. Attach an approval check to `gcp-prod`.
+4. Run the pipeline with parameters:
+   - `productName`: `via-supervisor` (or another agent)
+   - `environment`: `dev` or `prod`
+   - `action`: `plan` or `apply`
 
-Push every change to **both** remotes:
+The pipeline always runs Checkov and `terraform validate`. Apply runs only when `action=apply` and the ADO environment succeeds.
+
+State prefix is `$(productName)/$(environment)` in bucket `terraform-dev-agent`.
+
+## Checkov
+
+Scan modules and the composition stack:
 
 ```bash
-git push origin main
-git push github main
+chmod +x scripts/scan.sh
+./scripts/scan.sh
 ```
 
-| Remote | URL |
-| --- | --- |
-| `origin` | Origin (`freyr-digital/gcp-storage-terraform`) |
-| `github` | https://github.com/panugantisailalithasri/Google-Cloud-Storage-Bucket-Terraform-Files.git |
+The scan fails the ADO **Validate** stage on policy violations. Skipped checks are documented in `.checkov.yaml` (bucket access logs and CMEK, which need separate org-owned resources).
 
-Add the GitHub remote after clone if it is missing:
+## Adding another product
 
-```bash
-git remote add github https://github.com/panugantisailalithasri/Google-Cloud-Storage-Bucket-Terraform-Files.git
-```
+1. Copy `config/via-supervisor/` to `config/<new-product>/`.
+2. Adjust buckets, secret keys, and optional `cloud_run` image.
+3. Run the pipeline with `productName=<new-product>`.
 
-## Variables
+No module or `infra/` code changes are required.
+
+## Module inputs (composition)
 
 | Name | Description | Default |
 | --- | --- | --- |
-| `project_id` | GCP project ID | `freyr-ai` |
-| `bucket_name` | Globally unique bucket name | *(required)* |
-| `region` | Provider default region | `us-east1` |
-| `location` | Bucket location (`us-east1`, `US`, `EU`, …) | `us-east1` |
-| `storage_class` | `STANDARD`, `NEARLINE`, `COLDLINE`, or `ARCHIVE` | `STANDARD` |
-| `versioning_enabled` | Enable object versioning | `true` |
-| `force_destroy` | Allow Terraform to delete objects on destroy | `false` |
-| `public_access_prevention` | `enforced` or `inherited` | `enforced` |
-| `uniform_bucket_level_access` | Use bucket-level IAM | `true` |
-| `soft_delete_retention_seconds` | Soft-delete window (`0` disables) | `604800` (7 days) |
-| `lifecycle_age_days` | Delete noncurrent versions after N days (`null` skips) | `90` |
-| `labels` | Map of labels | `{}` |
-
-## Outputs
-
-- `bucket_name` — created bucket name
-- `bucket_url` — `gs://…` URL
-- `bucket_self_link` — Cloud Storage API self link
-- `location` / `storage_class` — applied settings
-
-## Notes
-
-- Bucket names are a global namespace. If apply fails with a name conflict, choose another `bucket_name`.
+| `product_name` | Product / agent id | *(required)* |
+| `environment` | `dev` or `prod` | *(required)* |
+| `project_id` | GCP project | `freyr-ai` |
+| `region` / `location` | Region; bucket location defaults to region | `us-east1` |
+| `buckets` | Map of short name → bucket settings | `{}` |
+| `secret_keys` | Short names for Secret Manager | `[]` |
+| `cloud_run` | Service settings; `null` skips Cloud Run | `null` |
+| `runtime_sa_roles` | Extra project roles for the runtime SA | logging / monitoring / Artifact Registry |
+| `enable_apis` | Enable required GCP APIs | `true` |

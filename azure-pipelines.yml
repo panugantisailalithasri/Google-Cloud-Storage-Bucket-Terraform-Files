@@ -1,0 +1,146 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+parameters:
+  - name: productName
+    displayName: Product or agent name (example: via-supervisor)
+    type: string
+    default: via-supervisor
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values:
+      - dev
+      - prod
+  - name: action
+    displayName: Terraform action
+    type: string
+    default: plan
+    values:
+      - plan
+      - apply
+
+variables:
+  terraformVersion: "1.9.8"
+  productName: ${{ parameters.productName }}
+  environment: ${{ parameters.environment }}
+  statePrefix: ${{ parameters.productName }}/${{ parameters.environment }}
+
+pool:
+  vmImage: ubuntu-22.04
+
+stages:
+  - stage: Validate
+    displayName: Checkov and Terraform validate
+    jobs:
+      - job: Scan
+        displayName: IaC scan and validate
+        steps:
+          - checkout: self
+          - bash: |
+              set -euo pipefail
+              curl -fsSL "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip" -o /tmp/terraform.zip
+              sudo unzip -o /tmp/terraform.zip -d /usr/local/bin
+              terraform fmt -check -recursive modules infra
+              terraform -chdir=infra init -backend=false
+              terraform -chdir=infra validate
+            displayName: Terraform fmt and validate
+          - bash: |
+              set -euo pipefail
+              python3 -m pip install --user --quiet checkov
+              export PATH="$HOME/.local/bin:$PATH"
+              checkov -d modules -d infra --config-file .checkov.yaml
+            displayName: Checkov IaC scan
+
+  - stage: Plan
+    displayName: Terraform plan
+    dependsOn: Validate
+    jobs:
+      - job: Plan
+        displayName: Plan ${{ parameters.productName }} ${{ parameters.environment }}
+        steps:
+          - checkout: self
+          - bash: |
+              set -euo pipefail
+              curl -fsSL "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip" -o /tmp/terraform.zip
+              sudo unzip -o /tmp/terraform.zip -d /usr/local/bin
+
+              ENV_FILE="envs/$(environment).tfvars"
+              if [ ! -f "$ENV_FILE" ]; then
+                ENV_FILE="envs/$(environment).tfvars.example"
+              fi
+
+              PRODUCT_FILE="config/$(productName)/$(environment).tfvars"
+              if [ ! -f "$PRODUCT_FILE" ]; then
+                PRODUCT_FILE="config/$(productName)/$(environment).tfvars.example"
+              fi
+
+              VAR_FILES=(-var-file="../${ENV_FILE}")
+              if [ -f "$PRODUCT_FILE" ]; then
+                VAR_FILES+=(-var-file="../${PRODUCT_FILE}")
+              fi
+
+              terraform -chdir=infra init \
+                -backend-config="bucket=terraform-dev-agent" \
+                -backend-config="prefix=$(statePrefix)"
+
+              terraform -chdir=infra plan \
+                -var="product_name=$(productName)" \
+                -var="environment=$(environment)" \
+                "${VAR_FILES[@]}"
+            displayName: Terraform init and plan
+            env:
+              GOOGLE_CREDENTIALS: $(GCP_SERVICE_ACCOUNT_JSON)
+
+  - stage: Apply
+    displayName: Terraform apply
+    dependsOn: Plan
+    condition: and(succeeded(), eq('${{ parameters.action }}', 'apply'))
+    jobs:
+      - deployment: Apply
+        displayName: Apply ${{ parameters.productName }} ${{ parameters.environment }}
+        environment: gcp-${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - bash: |
+                    set -euo pipefail
+                    curl -fsSL "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip" -o /tmp/terraform.zip
+                    sudo unzip -o /tmp/terraform.zip -d /usr/local/bin
+
+                    ENV_FILE="envs/$(environment).tfvars"
+                    if [ ! -f "$ENV_FILE" ]; then
+                      ENV_FILE="envs/$(environment).tfvars.example"
+                    fi
+
+                    PRODUCT_FILE="config/$(productName)/$(environment).tfvars"
+                    if [ ! -f "$PRODUCT_FILE" ]; then
+                      PRODUCT_FILE="config/$(productName)/$(environment).tfvars.example"
+                    fi
+
+                    VAR_FILES=(-var-file="../${ENV_FILE}")
+                    if [ -f "$PRODUCT_FILE" ]; then
+                      VAR_FILES+=(-var-file="../${PRODUCT_FILE}")
+                    fi
+
+                    terraform -chdir=infra init \
+                      -backend-config="bucket=terraform-dev-agent" \
+                      -backend-config="prefix=$(statePrefix)"
+
+                    terraform -chdir=infra apply -auto-approve \
+                      -var="product_name=$(productName)" \
+                      -var="environment=$(environment)" \
+                      "${VAR_FILES[@]}"
+                  displayName: Terraform apply
+                  env:
+                    GOOGLE_CREDENTIALS: $(GCP_SERVICE_ACCOUNT_JSON)
