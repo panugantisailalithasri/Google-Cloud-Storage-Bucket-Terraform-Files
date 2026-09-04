@@ -9,4 +9,4 @@ if ! command -v checkov >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-checkov -d modules -d infra --config-file .checkov.yaml "$@"
+checkov -d modules -d via-supervisor --config-file .checkov.yaml "$@"

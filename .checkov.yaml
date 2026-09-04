@@ -1,7 +1,7 @@
 compact: true
 directory:
   - modules
-  - infra
+  - via-supervisor
 download-external-modules: false
 evaluate-variables: true
 framework:
@@ -10,3 +10,6 @@ quiet: true
 skip-path:
   - .terraform
 soft-fail: false
+# Access logs require a separate log bucket this stack does not own.
+skip-check:
+  - CKV_GCP_62

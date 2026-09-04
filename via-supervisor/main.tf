@@ -1,3 +1,6 @@
+# via-supervisor agent stack.
+# Calls reusable templates in ../modules. Env values: environments/<env>.tfvars
+
 locals {
   # Naming convention: <product_name>-<environment>-<resource>
   location = coalesce(var.location, var.region)

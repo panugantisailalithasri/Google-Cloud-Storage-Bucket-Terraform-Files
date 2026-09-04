@@ -17,8 +17,9 @@ variable "location" {
 }
 
 variable "product_name" {
-  description = "Product or agent name (for example via-supervisor). Combined with environment and a resource suffix: <product_name>-<environment>-<resource>."
+  description = "Product or agent name. Defaults to this folder (via-supervisor). Combined with environment and a resource suffix: <product_name>-<environment>-<resource>."
   type        = string
+  default     = "via-supervisor"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{1,18}[a-z0-9]$", var.product_name))

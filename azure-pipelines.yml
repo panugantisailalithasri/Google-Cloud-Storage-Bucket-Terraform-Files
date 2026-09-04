@@ -10,7 +10,7 @@ pr:
 
 parameters:
   - name: productName
-    displayName: Product or agent name (example: via-supervisor)
+    displayName: Agent / microservice folder (example: via-supervisor)
     type: string
     default: via-supervisor
   - name: environment
@@ -49,15 +49,15 @@ stages:
               set -euo pipefail
               curl -fsSL "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip" -o /tmp/terraform.zip
               sudo unzip -o /tmp/terraform.zip -d /usr/local/bin
-              terraform fmt -check -recursive modules infra
-              terraform -chdir=infra init -backend=false
-              terraform -chdir=infra validate
+              terraform fmt -check -recursive modules "$(productName)"
+              terraform -chdir="$(productName)" init -backend=false
+              terraform -chdir="$(productName)" validate
             displayName: Terraform fmt and validate
           - bash: |
               set -euo pipefail
               python3 -m pip install --user --quiet checkov
               export PATH="$HOME/.local/bin:$PATH"
-              checkov -d modules -d infra --config-file .checkov.yaml
+              checkov -d modules -d "$(productName)" --config-file .checkov.yaml
             displayName: Checkov IaC scan
 
   - stage: Plan
@@ -73,29 +73,20 @@ stages:
               curl -fsSL "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip" -o /tmp/terraform.zip
               sudo unzip -o /tmp/terraform.zip -d /usr/local/bin
 
-              ENV_FILE="envs/$(environment).tfvars"
+              STACK="$(productName)"
+              ENV_FILE="${STACK}/environments/$(environment).tfvars"
               if [ ! -f "$ENV_FILE" ]; then
-                ENV_FILE="envs/$(environment).tfvars.example"
+                ENV_FILE="${STACK}/environments/$(environment).tfvars.example"
               fi
 
-              PRODUCT_FILE="config/$(productName)/$(environment).tfvars"
-              if [ ! -f "$PRODUCT_FILE" ]; then
-                PRODUCT_FILE="config/$(productName)/$(environment).tfvars.example"
-              fi
-
-              VAR_FILES=(-var-file="../${ENV_FILE}")
-              if [ -f "$PRODUCT_FILE" ]; then
-                VAR_FILES+=(-var-file="../${PRODUCT_FILE}")
-              fi
-
-              terraform -chdir=infra init \
+              terraform -chdir="$STACK" init \
                 -backend-config="bucket=terraform-dev-agent" \
                 -backend-config="prefix=$(statePrefix)"
 
-              terraform -chdir=infra plan \
+              terraform -chdir="$STACK" plan \
                 -var="product_name=$(productName)" \
                 -var="environment=$(environment)" \
-                "${VAR_FILES[@]}"
+                -var-file="environments/$(basename "$ENV_FILE")"
             displayName: Terraform init and plan
             env:
               GOOGLE_CREDENTIALS: $(GCP_SERVICE_ACCOUNT_JSON)
@@ -118,29 +109,20 @@ stages:
                     curl -fsSL "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip" -o /tmp/terraform.zip
                     sudo unzip -o /tmp/terraform.zip -d /usr/local/bin
 
-                    ENV_FILE="envs/$(environment).tfvars"
+                    STACK="$(productName)"
+                    ENV_FILE="${STACK}/environments/$(environment).tfvars"
                     if [ ! -f "$ENV_FILE" ]; then
-                      ENV_FILE="envs/$(environment).tfvars.example"
+                      ENV_FILE="${STACK}/environments/$(environment).tfvars.example"
                     fi
 
-                    PRODUCT_FILE="config/$(productName)/$(environment).tfvars"
-                    if [ ! -f "$PRODUCT_FILE" ]; then
-                      PRODUCT_FILE="config/$(productName)/$(environment).tfvars.example"
-                    fi
-
-                    VAR_FILES=(-var-file="../${ENV_FILE}")
-                    if [ -f "$PRODUCT_FILE" ]; then
-                      VAR_FILES+=(-var-file="../${PRODUCT_FILE}")
-                    fi
-
-                    terraform -chdir=infra init \
+                    terraform -chdir="$STACK" init \
                       -backend-config="bucket=terraform-dev-agent" \
                       -backend-config="prefix=$(statePrefix)"
 
-                    terraform -chdir=infra apply -auto-approve \
+                    terraform -chdir="$STACK" apply -auto-approve \
                       -var="product_name=$(productName)" \
                       -var="environment=$(environment)" \
-                      "${VAR_FILES[@]}"
+                      -var-file="environments/$(basename "$ENV_FILE")"
                   displayName: Terraform apply
                   env:
                     GOOGLE_CREDENTIALS: $(GCP_SERVICE_ACCOUNT_JSON)
