@@ -9,6 +9,7 @@ framework:
 quiet: true
 skip-path:
   - .terraform
+  - "**/remote-backend/.terraform"
 soft-fail: false
 # Access logs require a separate log bucket this stack does not own.
 skip-check:

@@ -1,7 +1,8 @@
 # Copy to backend.hcl, then:
 #   terraform init -backend-config=backend.hcl
 #
-# State is isolated per agent and environment in terraform-dev-agent.
+# Each agent has its own state bucket. Env isolation is the prefix.
+# Create the bucket once from remote-backend/ before the first init.
 
-bucket = "terraform-dev-agent"
-prefix = "via-supervisor/ENVIRONMENT"
+bucket = "via-supervisor-tfstate"
+prefix = "dev"

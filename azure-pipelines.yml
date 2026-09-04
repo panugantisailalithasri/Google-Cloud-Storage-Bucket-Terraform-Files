@@ -32,7 +32,8 @@ variables:
   terraformVersion: "1.9.8"
   productName: ${{ parameters.productName }}
   environment: ${{ parameters.environment }}
-  statePrefix: ${{ parameters.productName }}/${{ parameters.environment }}
+  stateBucket: ${{ parameters.productName }}-tfstate
+  statePrefix: ${{ parameters.environment }}
 
 pool:
   vmImage: ubuntu-22.04
@@ -52,6 +53,8 @@ stages:
               terraform fmt -check -recursive modules "$(productName)"
               terraform -chdir="$(productName)" init -backend=false
               terraform -chdir="$(productName)" validate
+              terraform -chdir="$(productName)/remote-backend" init -backend=false
+              terraform -chdir="$(productName)/remote-backend" validate
             displayName: Terraform fmt and validate
           - bash: |
               set -euo pipefail
@@ -80,7 +83,7 @@ stages:
               fi
 
               terraform -chdir="$STACK" init \
-                -backend-config="bucket=terraform-dev-agent" \
+                -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
               terraform -chdir="$STACK" plan \
@@ -116,7 +119,7 @@ stages:
                     fi
 
                     terraform -chdir="$STACK" init \
-                      -backend-config="bucket=terraform-dev-agent" \
+                      -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
                     terraform -chdir="$STACK" apply -auto-approve \
