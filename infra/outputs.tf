@@ -8,6 +8,16 @@ output "environment" {
   value       = var.environment
 }
 
+output "resource_names" {
+  description = "Names following <product_name>-<environment>-<resource>."
+  value = {
+    service_account = local.sa_name
+    cloud_run       = var.cloud_run == null ? null : local.cloud_run_name
+    buckets         = { for key, bucket in module.buckets : key => bucket.name }
+    secrets         = local.secret_ids
+  }
+}
+
 output "runtime_service_account" {
   description = "Runtime service account email."
   value       = module.runtime_sa.email

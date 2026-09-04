@@ -7,7 +7,7 @@ region      = "us-east1"
 environment = "dev"
 
 buckets = {
-  assets = {
+  bucket = {
     force_destroy = true
   }
 }
@@ -18,6 +18,7 @@ secret_keys = [
 
 # Set image to a pinned Artifact Registry tag or digest for this product.
 # cloud_run = {
+#   resource            = "run"
 #   image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:dev-123"
 #   min_instances       = 0
 #   max_instances       = 2

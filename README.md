@@ -18,17 +18,38 @@ azure-pipelines.yml       Checkov + plan/apply
 scripts/scan.sh           Local Checkov scan
 ```
 
-## What a stack creates
+## Naming convention
 
-For `product_name=via-supervisor` and `environment=dev` in project `freyr-ai`:
+Every resource is named:
 
-| Resource | Derived name |
+```text
+<product_name>-<environment>-<resource>
+```
+
+`product_name` and `environment` are passed dynamically (ADO parameters or `-var`). `<resource>` is the suffix you pass per resource (bucket map key, secret key, Cloud Run `resource`, or `runtime_sa_resource`).
+
+For `product_name=via-supervisor` and `environment=prod`:
+
+| You pass | Created name |
 | --- | --- |
-| Runtime service account | `via-supervisor-dev-run` |
-| Bucket key `assets` | `freyr-ai-via-supervisor-dev-assets` |
-| Secret key `app-config` | `via-supervisor-dev-app-config` |
-| Cloud Run service | `via-supervisor-dev` |
-| Terraform state | `gs://terraform-dev-agent/via-supervisor/dev` |
+| `buckets = { bucket = {} }` | `via-supervisor-prod-bucket` |
+| `runtime_sa_resource = "sa"` (default) | `via-supervisor-prod-sa` |
+| `secret_keys = ["app-config"]` | `via-supervisor-prod-app-config` |
+| `cloud_run.resource = "run"` (default) | `via-supervisor-prod-run` |
+| Terraform state prefix | `via-supervisor/prod` |
+
+Pass only the suffix (`bucket`, `sa`, `run`). Do not put the product or env into the key, or the name will be doubled.
+
+Need a second bucket? Add another suffix:
+
+```hcl
+buckets = {
+  bucket = {}
+  logs   = {}
+}
+```
+
+That creates `via-supervisor-prod-bucket` and `via-supervisor-prod-logs`.
 
 The same modules and `infra/` code are used for every other agent. Add `config/<product>/<env>.tfvars` (or a `.example`) and pass `productName` / `environment` in the pipeline.
 
@@ -38,8 +59,9 @@ Pass these at plan/apply time (ADO parameters or `-var`):
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
-| `product_name` | `via-supervisor` | Names, labels, state prefix |
-| `environment` | `dev` or `prod` | Names, labels, env tfvars |
+| `product_name` | `via-supervisor` | First segment of every resource name |
+| `environment` | `dev` or `prod` | Second segment of every resource name |
+| `buckets` keys / `secret_keys` / `cloud_run.resource` | `bucket`, `app-config`, `run` | Third segment (`<resource>`) |
 
 Do not default `product_name` or `environment` inside modules. Env files may set `environment` as a convenience; ADO still passes both explicitly so the pipeline is the source of truth.
 
@@ -123,7 +145,7 @@ chmod +x scripts/scan.sh
 ./scripts/scan.sh
 ```
 
-The scan fails the ADO **Validate** stage on policy violations. Skipped checks are documented in `.checkov.yaml` (bucket access logs and CMEK, which need separate org-owned resources).
+The scan fails the ADO **Validate** stage on policy violations.
 
 ## Adding another product
 
@@ -141,8 +163,9 @@ No module or `infra/` code changes are required.
 | `environment` | `dev` or `prod` | *(required)* |
 | `project_id` | GCP project | `freyr-ai` |
 | `region` / `location` | Region; bucket location defaults to region | `us-east1` |
-| `buckets` | Map of short name → bucket settings | `{}` |
-| `secret_keys` | Short names for Secret Manager | `[]` |
-| `cloud_run` | Service settings; `null` skips Cloud Run | `null` |
+| `buckets` | Map of resource suffix → bucket settings (`bucket` → `…-bucket`) | `{}` |
+| `secret_keys` | Resource suffixes for Secret Manager | `[]` |
+| `cloud_run` | Service settings; `resource` defaults to `run`; `null` skips Cloud Run | `null` |
+| `runtime_sa_resource` | SA name suffix | `sa` |
 | `runtime_sa_roles` | Extra project roles for the runtime SA | logging / monitoring / Artifact Registry |
 | `enable_apis` | Enable required GCP APIs | `true` |

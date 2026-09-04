@@ -17,7 +17,7 @@ variable "location" {
 }
 
 variable "product_name" {
-  description = "Product or agent name (for example via-supervisor). Used in resource names and labels."
+  description = "Product or agent name (for example via-supervisor). Combined with environment and a resource suffix: <product_name>-<environment>-<resource>."
   type        = string
 
   validation {
@@ -48,6 +48,17 @@ variable "enable_apis" {
   default     = true
 }
 
+variable "runtime_sa_resource" {
+  description = "Resource suffix for the runtime service account. Final name is <product_name>-<environment>-<suffix> (example: via-supervisor-prod-sa)."
+  type        = string
+  default     = "sa"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", var.runtime_sa_resource))
+    error_message = "runtime_sa_resource must be lowercase letters, digits, and hyphens (example: sa)."
+  }
+}
+
 variable "runtime_sa_roles" {
   description = "Project-level roles for the product runtime service account."
   type        = list(string)
@@ -59,7 +70,7 @@ variable "runtime_sa_roles" {
 }
 
 variable "buckets" {
-  description = "Map of bucket short names to settings. Bucket names are derived from project, product, env, and key."
+  description = "Map of resource suffixes to bucket settings. Name is <product_name>-<environment>-<key> (example key bucket → via-supervisor-prod-bucket). Pass only the suffix, not the full name."
   type = map(object({
     storage_class      = optional(string, "STANDARD")
     versioning_enabled = optional(bool, true)
@@ -73,18 +84,33 @@ variable "buckets" {
     })), [])
   }))
   default = {}
+
+  validation {
+    condition = alltrue([
+      for key in keys(var.buckets) : can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", key))
+    ])
+    error_message = "Each buckets map key is the resource suffix only (example: bucket), and must be lowercase."
+  }
 }
 
 variable "secret_keys" {
-  description = "Short secret names. Terraform creates empty secrets; set versions in ADO/GCP, not in tfvars."
+  description = "Resource suffixes for secrets. Name is <product_name>-<environment>-<key> (example: via-supervisor-prod-app-config). Pass only the suffix. Terraform does not store secret values."
   type        = list(string)
   default     = []
+
+  validation {
+    condition = alltrue([
+      for key in var.secret_keys : can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", key))
+    ])
+    error_message = "Each secret key is the resource suffix only and must be lowercase (example: app-config)."
+  }
 }
 
 variable "cloud_run" {
-  description = "Cloud Run service settings. Set null to skip Cloud Run."
+  description = "Cloud Run service settings. Set null to skip Cloud Run. Service name is <product_name>-<environment>-<resource> (default resource: run)."
   type = object({
     image               = string
+    resource            = optional(string, "run")
     port                = optional(number, 8080)
     cpu                 = optional(string, "1")
     memory              = optional(string, "512Mi")

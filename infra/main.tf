@@ -1,6 +1,6 @@
 locals {
-  name_prefix = "${var.product_name}-${var.environment}"
-  location    = coalesce(var.location, var.region)
+  # Naming convention: <product_name>-<environment>-<resource>
+  location = coalesce(var.location, var.region)
 
   labels = merge(
     {
@@ -11,15 +11,16 @@ locals {
     var.labels
   )
 
-  sa_account_id = substr("${local.name_prefix}-run", 0, 30)
+  sa_name = "${var.product_name}-${var.environment}-${var.runtime_sa_resource}"
 
   secret_ids = {
-    for key in var.secret_keys : key => "${local.name_prefix}-${key}"
+    for key in var.secret_keys : key => "${var.product_name}-${var.environment}-${key}"
   }
 
   # Module arguments are evaluated even when count = 0.
   cloud_run = coalesce(var.cloud_run, {
     image               = "unused.local/app:disabled"
+    resource            = "run"
     port                = 8080
     cpu                 = "1"
     memory              = "512Mi"
@@ -32,6 +33,8 @@ locals {
     invoker_members     = []
     deletion_protection = true
   })
+
+  cloud_run_name = "${var.product_name}-${var.environment}-${local.cloud_run.resource}"
 }
 
 resource "google_project_service" "required" {
@@ -53,9 +56,9 @@ module "runtime_sa" {
   source = "../modules/iam"
 
   project_id    = var.project_id
-  account_id    = trimsuffix(local.sa_account_id, "-")
+  account_id    = trimsuffix(substr(local.sa_name, 0, 30), "-")
   display_name  = "${var.product_name} ${var.environment} runtime"
-  description   = "Runtime identity for ${local.name_prefix}"
+  description   = "Runtime identity for ${local.sa_name}"
   project_roles = var.runtime_sa_roles
 
   depends_on = [google_project_service.required]
@@ -80,7 +83,7 @@ module "buckets" {
   for_each = var.buckets
 
   project_id         = var.project_id
-  name               = "${var.project_id}-${local.name_prefix}-${each.key}"
+  name               = "${var.product_name}-${var.environment}-${each.key}"
   location           = local.location
   storage_class      = each.value.storage_class
   force_destroy      = each.value.force_destroy
@@ -107,7 +110,7 @@ module "cloud_run" {
   count  = var.cloud_run == null ? 0 : 1
 
   project_id            = var.project_id
-  name                  = local.name_prefix
+  name                  = local.cloud_run_name
   location              = var.region
   image                 = local.cloud_run.image
   service_account_email = module.runtime_sa.email

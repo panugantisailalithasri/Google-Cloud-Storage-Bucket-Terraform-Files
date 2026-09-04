@@ -7,7 +7,7 @@ region      = "us-east1"
 environment = "prod"
 
 buckets = {
-  assets = {
+  bucket = {
     force_destroy = false
   }
 }
@@ -17,6 +17,7 @@ secret_keys = [
 ]
 
 # cloud_run = {
+#   resource            = "run"
 #   image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:1.2.3"
 #   min_instances       = 1
 #   max_instances       = 10

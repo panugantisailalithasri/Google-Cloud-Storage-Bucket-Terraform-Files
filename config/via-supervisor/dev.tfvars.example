@@ -3,7 +3,7 @@
 # product_name and environment still come from ADO parameters.
 
 buckets = {
-  assets = {
+  bucket = {
     force_destroy = true
   }
 }
