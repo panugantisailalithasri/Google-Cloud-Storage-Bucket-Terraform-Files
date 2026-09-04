@@ -36,8 +36,11 @@ buckets = {
   }
 }
 
+# Secrets for three products hosted in this agent stack.
 secret_keys = [
-  "app-config",
+  "via-supervisor",
+  "via-superagent",
+  "cognito",
 ]
 
 # via-supervisor does not deploy Cloud Run.

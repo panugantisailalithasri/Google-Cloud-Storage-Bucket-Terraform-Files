@@ -61,7 +61,7 @@ buckets = {
 secret_keys = ["app-config"]
 ```
 
-Creates `via-supervisor-dev-bucket` and secret `via-supervisor-dev-app-config`. Cloud Run is not created.
+Creates `via-supervisor-dev-bucket` and three secrets: `via-supervisor-dev-via-supervisor`, `via-supervisor-dev-via-superagent`, and `via-supervisor-dev-cognito`. Cloud Run is not created.
 
 **Another agent (agent B) — 2 buckets, same module**
 
@@ -88,7 +88,7 @@ For `via-supervisor` + `prod`:
 | --- | --- |
 | `buckets = { bucket = {} }` | `via-supervisor-prod-bucket` |
 | `runtime_sa_resource = "sa"` | `via-supervisor-prod-sa` |
-| `secret_keys = ["app-config"]` | `via-supervisor-prod-app-config` |
+| `secret_keys` for via-supervisor, via-superagent, cognito | `via-supervisor-prod-via-supervisor`, `via-supervisor-prod-via-superagent`, `via-supervisor-prod-cognito` |
 | Remote backend | `via-supervisor-tfstate` (prefix `prod`) |
 
 ## Security defaults
