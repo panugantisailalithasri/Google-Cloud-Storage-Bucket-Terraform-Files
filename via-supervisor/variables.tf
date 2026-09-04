@@ -1,25 +1,21 @@
 variable "project_id" {
-  description = "GCP project that owns the resources."
+  description = "GCP project that owns the resources. Set in environments/*.tfvars."
   type        = string
-  default     = "freyr-ai"
 }
 
 variable "region" {
-  description = "Default GCP region for provider and regional resources."
+  description = "Default GCP region for provider and regional resources. Set in environments/*.tfvars."
   type        = string
-  default     = "us-east1"
 }
 
 variable "location" {
-  description = "Cloud Storage location. Defaults to region."
+  description = "Cloud Storage location. Set in environments/*.tfvars (usually the same as region)."
   type        = string
-  default     = null
 }
 
 variable "product_name" {
-  description = "Product or agent name. Defaults to this folder (via-supervisor). Combined with environment and a resource suffix: <product_name>-<environment>-<resource>."
+  description = "Product or agent name. Set in environments/*.tfvars. Combined as <product_name>-<environment>-<resource>."
   type        = string
-  default     = "via-supervisor"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{1,18}[a-z0-9]$", var.product_name))
@@ -28,7 +24,7 @@ variable "product_name" {
 }
 
 variable "environment" {
-  description = "Deployment environment."
+  description = "Deployment environment. Set in environments/*.tfvars."
   type        = string
 
   validation {
@@ -38,21 +34,18 @@ variable "environment" {
 }
 
 variable "labels" {
-  description = "Extra labels merged onto every resource."
+  description = "Extra labels merged onto every resource. Set in environments/*.tfvars."
   type        = map(string)
-  default     = {}
 }
 
 variable "enable_apis" {
-  description = "Enable required GCP APIs in the project."
+  description = "Enable required GCP APIs in the project. Set in environments/*.tfvars."
   type        = bool
-  default     = true
 }
 
 variable "runtime_sa_resource" {
-  description = "Resource suffix for the runtime service account. Final name is <product_name>-<environment>-<suffix> (example: via-supervisor-prod-sa)."
+  description = "Resource suffix for the runtime service account. Set in environments/*.tfvars (example: sa)."
   type        = string
-  default     = "sa"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", var.runtime_sa_resource))
@@ -61,29 +54,24 @@ variable "runtime_sa_resource" {
 }
 
 variable "runtime_sa_roles" {
-  description = "Project-level roles for the product runtime service account. Add roles/artifactregistry.reader in env tfvars when the agent uses Cloud Run."
+  description = "Project-level roles for the runtime service account. Set in environments/*.tfvars."
   type        = list(string)
-  default = [
-    "roles/logging.logWriter",
-    "roles/monitoring.metricWriter",
-  ]
 }
 
 variable "buckets" {
-  description = "Map of resource suffixes to bucket settings. Name is <product_name>-<environment>-<key> (example key bucket → via-supervisor-prod-bucket). Pass only the suffix, not the full name."
+  description = "Map of resource suffixes to bucket settings. Set in environments/*.tfvars. Name is <product_name>-<environment>-<key>."
   type = map(object({
-    storage_class      = optional(string, "STANDARD")
-    versioning_enabled = optional(bool, true)
-    force_destroy      = optional(bool, false)
-    lifecycle_age_days = optional(number, 90)
+    storage_class      = string
+    versioning_enabled = bool
+    force_destroy      = bool
+    lifecycle_age_days = number
     kms_key_name       = optional(string)
-    runtime_role       = optional(string, "roles/storage.objectUser")
-    extra_iam_members = optional(list(object({
+    runtime_role       = string
+    extra_iam_members = list(object({
       role   = string
       member = string
-    })), [])
+    }))
   }))
-  default = {}
 
   validation {
     condition = alltrue([
@@ -94,9 +82,8 @@ variable "buckets" {
 }
 
 variable "secret_keys" {
-  description = "Resource suffixes for secrets. Name is <product_name>-<environment>-<key> (example: via-supervisor-prod-app-config). Pass only the suffix. Terraform does not store secret values."
+  description = "Resource suffixes for secrets. Set in environments/*.tfvars. Name is <product_name>-<environment>-<key>."
   type        = list(string)
-  default     = []
 
   validation {
     condition = alltrue([
@@ -107,21 +94,21 @@ variable "secret_keys" {
 }
 
 variable "cloud_run" {
-  description = "Cloud Run service settings. Set null to skip Cloud Run. Service name is <product_name>-<environment>-<resource> (default resource: run)."
+  description = "Cloud Run settings. Set null in environments/*.tfvars to skip Cloud Run."
   type = object({
     image               = string
-    resource            = optional(string, "run")
-    port                = optional(number, 8080)
-    cpu                 = optional(string, "1")
-    memory              = optional(string, "512Mi")
-    min_instances       = optional(number, 0)
-    max_instances       = optional(number, 3)
-    timeout_seconds     = optional(number, 60)
-    env_vars            = optional(map(string), {})
-    secret_env_vars     = optional(map(string), {})
-    ingress             = optional(string, "INGRESS_TRAFFIC_INTERNAL_ONLY")
-    invoker_members     = optional(list(string), [])
-    deletion_protection = optional(bool, true)
+    resource            = string
+    port                = number
+    cpu                 = string
+    memory              = string
+    min_instances       = number
+    max_instances       = number
+    timeout_seconds     = number
+    env_vars            = map(string)
+    secret_env_vars     = map(string)
+    ingress             = string
+    invoker_members     = list(string)
+    deletion_protection = bool
   })
-  default = null
+  nullable = true
 }

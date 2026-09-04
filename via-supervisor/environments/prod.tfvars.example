@@ -1,23 +1,44 @@
-# via-supervisor / prod — Cloud Storage + Secret Manager only (no Cloud Run).
+# via-supervisor / prod
+# Source of truth for every variable in ../variables.tf
 #   terraform plan -var-file=environments/prod.tfvars.example
 #
-# This agent: one bucket (via-supervisor-prod-bucket).
-# Two-bucket agent (same module, different folder/tfvars):
-#   buckets = {
-#     bucket = {}
-#     data   = {}
-#   }
+# This agent: Cloud Storage + Secret Manager, ONE bucket (via-supervisor-prod-bucket).
+# Another agent with TWO buckets (same modules/gcs-bucket template):
+#   buckets = { bucket = { ... }, data = { ... } }
 
-project_id  = "freyr-ai"
-region      = "us-east1"
-environment = "prod"
+product_name = "via-supervisor"
+environment  = "prod"
+project_id   = "freyr-ai"
+region       = "us-east1"
+location     = "us-east1"
+
+labels = {
+  team = "ai-agents"
+}
+
+enable_apis = true
+
+runtime_sa_resource = "sa"
+runtime_sa_roles = [
+  "roles/logging.logWriter",
+  "roles/monitoring.metricWriter",
+]
 
 buckets = {
   bucket = {
-    force_destroy = false
+    storage_class      = "STANDARD"
+    versioning_enabled = true
+    force_destroy      = false
+    lifecycle_age_days = 90
+    kms_key_name       = null
+    runtime_role       = "roles/storage.objectUser"
+    extra_iam_members  = []
   }
 }
 
 secret_keys = [
   "app-config",
 ]
+
+# via-supervisor does not deploy Cloud Run.
+cloud_run = null

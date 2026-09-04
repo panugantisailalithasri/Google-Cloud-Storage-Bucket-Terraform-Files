@@ -115,23 +115,19 @@ gcloud config set project freyr-ai
 # 1. Once per agent: create the dedicated state bucket
 cd via-supervisor/remote-backend
 terraform init
-terraform apply
+terraform apply -var-file=terraform.tfvars.example
 
 # 2. Agent stack
 cd ..
 cp backend.hcl.example backend.hcl
 terraform init -backend-config=backend.hcl
 
-terraform plan \
-  -var="environment=dev" \
-  -var-file=environments/dev.tfvars.example
+terraform plan -var-file=environments/dev.tfvars.example
 
-terraform apply \
-  -var="environment=dev" \
-  -var-file=environments/dev.tfvars.example
+terraform apply -var-file=environments/dev.tfvars.example
 ```
 
-`product_name` defaults to `via-supervisor`.
+All stack inputs come from `environments/<env>.tfvars` (see `variables.tf`). Do not rely on defaults in `variables.tf`.
 
 ## Azure DevOps
 
@@ -153,8 +149,8 @@ terraform apply \
 ## Adding another agent
 
 1. Copy `via-supervisor/` to `<new-agent>/`.
-2. Set `product_name` default in `<new-agent>/variables.tf` and `<new-agent>/remote-backend/variables.tf`.
-3. Edit `<new-agent>/environments/` and `<new-agent>/backend.hcl.example` (`bucket = "<new-agent>-tfstate"`).
+2. Edit `<new-agent>/environments/*.tfvars.example` (including `product_name`) and `<new-agent>/remote-backend/terraform.tfvars.example`.
+3. Edit `<new-agent>/backend.hcl.example` (`bucket = "<new-agent>-tfstate"`).
 4. Apply `<new-agent>/remote-backend` once to create `gs://<new-agent>-tfstate`.
 5. Run the pipeline with `productName=<new-agent>`.
 

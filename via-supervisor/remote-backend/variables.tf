@@ -1,17 +1,14 @@
 variable "project_id" {
-  description = "GCP project that owns this agent's Terraform state bucket."
+  description = "GCP project that owns this agent's Terraform state bucket. Set in terraform.tfvars."
   type        = string
-  default     = "freyr-ai"
 }
 
 variable "region" {
-  description = "Location for the state bucket."
+  description = "Location for the state bucket. Set in terraform.tfvars."
   type        = string
-  default     = "us-east1"
 }
 
 variable "product_name" {
-  description = "Agent / microservice name. The state bucket is <product_name>-tfstate."
+  description = "Agent / microservice name. The state bucket is <product_name>-tfstate. Set in terraform.tfvars."
   type        = string
-  default     = "via-supervisor"
 }

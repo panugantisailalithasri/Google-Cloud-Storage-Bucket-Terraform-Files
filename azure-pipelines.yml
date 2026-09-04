@@ -87,8 +87,6 @@ stages:
                 -backend-config="prefix=$(statePrefix)"
 
               terraform -chdir="$STACK" plan \
-                -var="product_name=$(productName)" \
-                -var="environment=$(environment)" \
                 -var-file="environments/$(basename "$ENV_FILE")"
             displayName: Terraform init and plan
             env:
@@ -123,8 +121,6 @@ stages:
                       -backend-config="prefix=$(statePrefix)"
 
                     terraform -chdir="$STACK" apply -auto-approve \
-                      -var="product_name=$(productName)" \
-                      -var="environment=$(environment)" \
                       -var-file="environments/$(basename "$ENV_FILE")"
                   displayName: Terraform apply
                   env:

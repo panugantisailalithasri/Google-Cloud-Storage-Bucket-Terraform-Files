@@ -1,24 +1,44 @@
-# via-supervisor / dev — Cloud Storage + Secret Manager only (no Cloud Run).
+# via-supervisor / dev
+# Source of truth for every variable in ../variables.tf
 #   terraform plan -var-file=environments/dev.tfvars.example
 #
-# Bucket count is the map size. This agent uses ONE bucket.
-# Another agent using the same modules/gcs-bucket template with TWO buckets:
-#   buckets = {
-#     bucket = {}
-#     data   = {}
-#   }
-# → <product>-<env>-bucket and <product>-<env>-data
+# This agent: Cloud Storage + Secret Manager, ONE bucket.
+# Another agent with TWO buckets (same modules/gcs-bucket template):
+#   buckets = { bucket = { ... }, data = { ... } }
 
-project_id  = "freyr-ai"
-region      = "us-east1"
-environment = "dev"
+product_name = "via-supervisor"
+environment  = "dev"
+project_id   = "freyr-ai"
+region       = "us-east1"
+location     = "us-east1"
+
+labels = {
+  team = "ai-agents"
+}
+
+enable_apis = true
+
+runtime_sa_resource = "sa"
+runtime_sa_roles = [
+  "roles/logging.logWriter",
+  "roles/monitoring.metricWriter",
+]
 
 buckets = {
   bucket = {
-    force_destroy = true
+    storage_class      = "STANDARD"
+    versioning_enabled = true
+    force_destroy      = true
+    lifecycle_age_days = 90
+    kms_key_name       = null
+    runtime_role       = "roles/storage.objectUser"
+    extra_iam_members  = []
   }
 }
 
 secret_keys = [
   "app-config",
 ]
+
+# via-supervisor does not deploy Cloud Run.
+cloud_run = null
