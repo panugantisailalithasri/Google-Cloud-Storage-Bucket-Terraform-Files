@@ -131,8 +131,10 @@ All stack inputs come from `environments/<env>.tfvars` (see `variables.tf`). Do 
 
 ## Azure DevOps
 
+The pipeline uses the ARM service connection `GCP_freyrai_service_role` to mint an OIDC token, then exchanges it for GCP credentials via Workload Identity Federation (`ado-deployer-v3@freyr-ai.iam.gserviceaccount.com`). No GCP JSON key is stored in the pipeline.
+
 1. Create a pipeline from `azure-pipelines.yml`.
-2. Add secret `GCP_SERVICE_ACCOUNT_JSON`.
+2. Ensure the ARM service connection `GCP_freyrai_service_role` exists and this pipeline is allowed to use it.
 3. Create ADO environments `gcp-dev` and `gcp-prod` (approval on prod).
 4. Create the agent state bucket (`<productName>-tfstate`) once via `remote-backend/` before the first plan.
 5. Run with:

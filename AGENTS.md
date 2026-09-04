@@ -9,4 +9,4 @@
 - GCP `project_id`, region, and location are set in those tfvars files (`freyr-ai`, `us-east1` for via-supervisor).
 - After every commit, push `main` to **both** remotes: `origin` and `github` (`https://github.com/panugantisailalithasri/Google-Cloud-Storage-Bucket-Terraform-Files.git`).
 - Do not commit secrets, PATs, `.tfstate`, `.terraform.lock.hcl`, or `*.tfvars` (keep `*.tfvars.example`).
-- Run `./scripts/scan.sh` (Checkov) after Terraform changes.
+- Azure DevOps authenticates to GCP with ARM service connection `GCP_freyrai_service_role` and Workload Identity Federation (`ado-deployer-v3@freyr-ai.iam.gserviceaccount.com`). Do not use a GCP JSON key in the pipeline.
