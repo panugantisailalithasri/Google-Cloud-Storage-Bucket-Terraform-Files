@@ -1,5 +1,13 @@
-# via-supervisor / dev
+# via-supervisor / dev — Cloud Storage + Secret Manager only (no Cloud Run).
 #   terraform plan -var-file=environments/dev.tfvars.example
+#
+# Bucket count is the map size. This agent uses ONE bucket.
+# Another agent using the same modules/gcs-bucket template with TWO buckets:
+#   buckets = {
+#     bucket = {}
+#     data   = {}
+#   }
+# → <product>-<env>-bucket and <product>-<env>-data
 
 project_id  = "freyr-ai"
 region      = "us-east1"
@@ -14,14 +22,3 @@ buckets = {
 secret_keys = [
   "app-config",
 ]
-
-# cloud_run = {
-#   resource            = "run"
-#   image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:dev-123"
-#   min_instances       = 0
-#   max_instances       = 2
-#   deletion_protection = false
-#   secret_env_vars = {
-#     APP_CONFIG = "app-config"
-#   }
-# }

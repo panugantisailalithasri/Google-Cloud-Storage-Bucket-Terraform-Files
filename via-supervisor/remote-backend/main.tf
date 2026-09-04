@@ -1,9 +1,16 @@
 # Creates the dedicated GCS remote-backend bucket for this agent.
 # Run once before terraform init in the parent folder.
-# Example: via-supervisor → gs://via-supervisor-tfstate
+# via-supervisor → gs://via-supervisor-tfstate
+# A second agent folder uses the same gcs-bucket module → gs://<product>-tfstate
 
 locals {
   bucket_name = "${var.product_name}-tfstate"
+}
+
+resource "google_project_service" "storage" {
+  project            = var.project_id
+  service            = "storage.googleapis.com"
+  disable_on_destroy = false
 }
 
 module "state_bucket" {
@@ -20,4 +27,6 @@ module "state_bucket" {
     purpose    = "terraform-remote-backend"
     managed_by = "terraform"
   }
+
+  depends_on = [google_project_service.storage]
 }

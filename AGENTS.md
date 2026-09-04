@@ -2,6 +2,7 @@
 
 - Reusable modules live in `modules/` (gcs-bucket, iam, secret-manager, cloud-run). Do not run Terraform there.
 - Each agent/microservice has its own root folder (example: `via-supervisor/`). Env values live in `<agent>/environments/`.
+- via-supervisor deploys Cloud Storage + Secret Manager only (one application bucket). Bucket count is `var.buckets` (`for_each` on `modules/gcs-bucket`); another agent can pass two keys without changing the module.
 - Each agent has a dedicated GCS remote-backend bucket named `<product_name>-tfstate` (example: `via-supervisor-tfstate`). Env isolation is the backend prefix (`dev` / `prod`). Create the bucket once from `<agent>/remote-backend/` before the first agent `terraform init`.
 - Resource names follow `<product_name>-<environment>-<resource>` (example: `via-supervisor-prod-bucket`).
 - GCP `project_id` defaults to `freyr-ai`. Region/location default to `us-east1`.

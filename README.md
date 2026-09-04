@@ -2,6 +2,8 @@
 
 Reusable **modules** for Cloud Storage, IAM, Secret Manager, and Cloud Run. Each **agent / microservice** has its own folder (starting with `via-supervisor`). Environment values live under that folder in `environments/`. Each agent has a **dedicated Terraform state bucket**.
 
+**via-supervisor** deploys Cloud Storage and Secret Manager only (no Cloud Run). Bucket count is data: this agent defines **one** bucket; another agent uses the **same** `modules/gcs-bucket` template with **two** keys.
+
 ## Layout
 
 ```
@@ -46,6 +48,34 @@ terraform init -backend-config=backend.hcl
 
 ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically.
 
+## One bucket vs two buckets (same module)
+
+`modules/gcs-bucket` is the template. The agent env file decides how many times it is instantiated (`for_each = var.buckets`).
+
+**via-supervisor (agent A) — 1 bucket + secrets**
+
+```hcl
+buckets = {
+  bucket = {}
+}
+secret_keys = ["app-config"]
+```
+
+Creates `via-supervisor-dev-bucket` and secret `via-supervisor-dev-app-config`. Cloud Run is not created.
+
+**Another agent (agent B) — 2 buckets, same module**
+
+Copy `via-supervisor/` to `agent-b/`, then in `agent-b/environments/dev.tfvars`:
+
+```hcl
+buckets = {
+  bucket = {}
+  data   = {}
+}
+```
+
+Creates `agent-b-dev-bucket` and `agent-b-dev-data`. Still `source = "../modules/gcs-bucket"`. That agent gets its own state bucket `gs://agent-b-tfstate` from `agent-b/remote-backend/`.
+
 ## Naming convention
 
 ```text
@@ -59,7 +89,6 @@ For `via-supervisor` + `prod`:
 | `buckets = { bucket = {} }` | `via-supervisor-prod-bucket` |
 | `runtime_sa_resource = "sa"` | `via-supervisor-prod-sa` |
 | `secret_keys = ["app-config"]` | `via-supervisor-prod-app-config` |
-| `cloud_run.resource = "run"` | `via-supervisor-prod-run` |
 | Remote backend | `via-supervisor-tfstate` (prefix `prod`) |
 
 ## Security defaults
@@ -67,7 +96,7 @@ For `via-supervisor` + `prod`:
 - Buckets: uniform IAM, public access prevention, versioning, no `allUsers`
 - IAM: no service account keys; owner/editor/viewer rejected
 - Secrets: Terraform creates the secret resource only — no payloads in tfvars
-- Cloud Run: dedicated SA, CPU/memory limits, no unauthenticated invokers, no `:latest` image
+- via-supervisor uses Cloud Storage and Secret Manager only. Cloud Run stays in the stack as an optional module (`count = 0` unless `cloud_run` is set) so other agents can enable it without changing `modules/`.
 - State buckets: same private bucket module; `force_destroy` is false
 
 ## Prerequisites

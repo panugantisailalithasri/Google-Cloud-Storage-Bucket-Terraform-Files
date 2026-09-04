@@ -61,12 +61,11 @@ variable "runtime_sa_resource" {
 }
 
 variable "runtime_sa_roles" {
-  description = "Project-level roles for the product runtime service account."
+  description = "Project-level roles for the product runtime service account. Add roles/artifactregistry.reader in env tfvars when the agent uses Cloud Run."
   type        = list(string)
   default = [
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
-    "roles/artifactregistry.reader",
   ]
 }
 

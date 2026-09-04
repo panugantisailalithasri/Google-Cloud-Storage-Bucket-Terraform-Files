@@ -20,6 +20,14 @@ locals {
     for key in var.secret_keys : key => "${var.product_name}-${var.environment}-${key}"
   }
 
+  # Enable only the APIs this agent actually uses.
+  required_apis = toset(concat(
+    ["iam.googleapis.com", "iamcredentials.googleapis.com"],
+    length(var.buckets) > 0 ? ["storage.googleapis.com"] : [],
+    length(var.secret_keys) > 0 ? ["secretmanager.googleapis.com"] : [],
+    var.cloud_run != null ? ["run.googleapis.com", "artifactregistry.googleapis.com"] : [],
+  ))
+
   # Module arguments are evaluated even when count = 0.
   cloud_run = coalesce(var.cloud_run, {
     image               = "unused.local/app:disabled"
@@ -41,14 +49,7 @@ locals {
 }
 
 resource "google_project_service" "required" {
-  for_each = var.enable_apis ? toset([
-    "storage.googleapis.com",
-    "run.googleapis.com",
-    "secretmanager.googleapis.com",
-    "iam.googleapis.com",
-    "iamcredentials.googleapis.com",
-    "artifactregistry.googleapis.com",
-  ]) : toset([])
+  for_each = var.enable_apis ? local.required_apis : toset([])
 
   project            = var.project_id
   service            = each.value
@@ -81,6 +82,9 @@ module "secrets" {
   depends_on = [google_project_service.required]
 }
 
+# Same gcs-bucket module for every agent. How many buckets is var.buckets:
+#   1 key  → agent A (via-supervisor-dev-bucket)
+#   2 keys → agent B (via-supervisor-dev-bucket + via-supervisor-dev-data)
 module "buckets" {
   source   = "../modules/gcs-bucket"
   for_each = var.buckets

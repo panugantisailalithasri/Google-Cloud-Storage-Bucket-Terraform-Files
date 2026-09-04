@@ -1,5 +1,12 @@
-# via-supervisor / prod
+# via-supervisor / prod — Cloud Storage + Secret Manager only (no Cloud Run).
 #   terraform plan -var-file=environments/prod.tfvars.example
+#
+# This agent: one bucket (via-supervisor-prod-bucket).
+# Two-bucket agent (same module, different folder/tfvars):
+#   buckets = {
+#     bucket = {}
+#     data   = {}
+#   }
 
 project_id  = "freyr-ai"
 region      = "us-east1"
@@ -14,14 +21,3 @@ buckets = {
 secret_keys = [
   "app-config",
 ]
-
-# cloud_run = {
-#   resource            = "run"
-#   image               = "us-east1-docker.pkg.dev/freyr-ai/agents/via-supervisor:1.2.3"
-#   min_instances       = 1
-#   max_instances       = 10
-#   deletion_protection = true
-#   secret_env_vars = {
-#     APP_CONFIG = "app-config"
-#   }
-# }
