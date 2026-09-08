@@ -11,8 +11,14 @@ environment  = "dev"
 project_id   = "freyr-ai"
 region       = "us-east1"
 location     = "us-east1"
+
+# Cloud SQL private IP attaches to the VPC, not directly to a subnetwork.
+# Reference VPC details:
+#   VPC      = freya-ai-dev-vpc
+#   Subnet   = freya-ai-dev-subnet-us-east4
+#   Region   = us-east4
 vpc_name     = "freya-ai-dev-vpc"
-network_project_id = null
+network_project_id = "freyr-ai"
 
 labels = {
   team = "ai-agents"
