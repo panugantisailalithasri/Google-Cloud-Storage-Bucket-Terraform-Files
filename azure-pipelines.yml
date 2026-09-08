@@ -10,7 +10,7 @@ pr:
 
 parameters:
   - name: productName
-    displayName: Agent / microservice folder (example: via-supervisor)
+    displayName: "Agent / microservice folder (example: via-supervisor)"
     type: string
     default: via-supervisor
   - name: environment
