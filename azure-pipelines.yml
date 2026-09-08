@@ -126,7 +126,7 @@ stages:
                 echo "Remote state bucket gs://$(stateBucket) already exists."
               else
                 echo "Creating remote state bucket gs://$(stateBucket) from $(productName)/remote-backend."
-                terraform -chdir="$(productName)/remote-backend" init -backend=false
+                terraform -chdir="$(productName)/remote-backend" init
                 terraform -chdir="$(productName)/remote-backend" apply -auto-approve \
                   -var-file="terraform.tfvars.example"
               fi
@@ -209,7 +209,7 @@ stages:
                       echo "Remote state bucket gs://$(stateBucket) already exists."
                     else
                       echo "Creating remote state bucket gs://$(stateBucket) from $(productName)/remote-backend."
-                      terraform -chdir="$(productName)/remote-backend" init -backend=false
+                      terraform -chdir="$(productName)/remote-backend" init
                       terraform -chdir="$(productName)/remote-backend" apply -auto-approve \
                         -var-file="terraform.tfvars.example"
                     fi
