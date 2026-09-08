@@ -141,6 +141,8 @@ variable "cloudsql" {
     ssl_mode                                      = string
     enable_private_path_for_google_cloud_services = bool
     authorized_networks                           = list(string)
+    backup_enabled                                = bool
+    point_in_time_recovery_enabled                = bool
     database_flags = list(object({
       name  = string
       value = string

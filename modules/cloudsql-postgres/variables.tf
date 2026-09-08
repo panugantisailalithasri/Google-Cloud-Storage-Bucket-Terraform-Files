@@ -16,6 +16,7 @@ variable "region" {
 variable "private_network_name" {
   description = "Existing VPC network name used for private IP."
   type        = string
+  default     = "placeholder-private-vpc"
 }
 
 variable "network_project_id" {
@@ -57,26 +58,31 @@ variable "disk_size" {
 variable "disk_autoresize" {
   description = "Whether disk autoresize is enabled."
   type        = bool
+  default     = true
 }
 
 variable "ipv4_enabled" {
   description = "Whether public IPv4 is enabled."
   type        = bool
+  default     = false
 }
 
 variable "ssl_mode" {
   description = "Client SSL mode."
   type        = string
+  default     = "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"
 }
 
 variable "enable_private_path_for_google_cloud_services" {
   description = "Whether private path for Google Cloud services is enabled."
   type        = bool
+  default     = false
 }
 
 variable "authorized_networks" {
   description = "Authorized CIDR ranges used with public IP."
   type        = list(string)
+  default     = []
 }
 
 variable "database_flags" {
@@ -85,6 +91,19 @@ variable "database_flags" {
     name  = string
     value = string
   }))
+  default = []
+}
+
+variable "backup_enabled" {
+  description = "Whether automated backups are enabled."
+  type        = bool
+  default     = true
+}
+
+variable "point_in_time_recovery_enabled" {
+  description = "Whether point-in-time recovery is enabled."
+  type        = bool
+  default     = true
 }
 
 variable "labels" {
@@ -96,9 +115,11 @@ variable "labels" {
 variable "deletion_protection" {
   description = "Whether Terraform is prevented from deleting the instance."
   type        = bool
+  default     = false
 }
 
 variable "deletion_protection_enabled" {
   description = "Whether Cloud SQL deletion protection is enabled at the API level."
   type        = bool
+  default     = false
 }

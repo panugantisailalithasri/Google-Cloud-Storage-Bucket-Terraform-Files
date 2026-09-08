@@ -34,6 +34,11 @@ resource "google_sql_database_instance" "this" {
       }
     }
 
+    backup_configuration {
+      enabled                        = var.backup_enabled
+      point_in_time_recovery_enabled = var.point_in_time_recovery_enabled
+    }
+
     dynamic "database_flags" {
       for_each = var.database_flags
       content {

@@ -59,9 +59,11 @@ locals {
     disk_size                                     = 10
     disk_autoresize                               = true
     ipv4_enabled                                  = false
-    ssl_mode                                      = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    ssl_mode                                      = "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"
     enable_private_path_for_google_cloud_services = false
     authorized_networks                           = []
+    backup_enabled                                = true
+    point_in_time_recovery_enabled                = true
     database_flags                                = []
     deletion_protection                           = false
     deletion_protection_enabled                   = false
@@ -186,6 +188,8 @@ module "cloudsql" {
   ssl_mode                                      = local.cloudsql.ssl_mode
   enable_private_path_for_google_cloud_services = local.cloudsql.enable_private_path_for_google_cloud_services
   authorized_networks                           = local.cloudsql.authorized_networks
+  backup_enabled                                = local.cloudsql.backup_enabled
+  point_in_time_recovery_enabled                = local.cloudsql.point_in_time_recovery_enabled
   database_flags                                = local.cloudsql.database_flags
   labels                                        = local.labels
   deletion_protection                           = local.cloudsql.deletion_protection
