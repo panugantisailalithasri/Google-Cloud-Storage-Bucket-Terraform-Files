@@ -137,7 +137,7 @@ stages:
                 ENV_FILE="${STACK}/environments/$(environment).tfvars.example"
               fi
 
-              terraform -chdir="$STACK" init \
+              terraform -chdir="$STACK" init -reconfigure \
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
@@ -220,7 +220,7 @@ stages:
                       ENV_FILE="${STACK}/environments/$(environment).tfvars.example"
                     fi
 
-                    terraform -chdir="$STACK" init \
+                    terraform -chdir="$STACK" init -reconfigure \
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
