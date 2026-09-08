@@ -122,6 +122,15 @@ stages:
               fi
               gcloud auth login --cred-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet
 
+              if gcloud storage buckets describe "gs://$(stateBucket)" >/dev/null 2>&1; then
+                echo "Remote state bucket gs://$(stateBucket) already exists."
+              else
+                echo "Creating remote state bucket gs://$(stateBucket) from $(productName)/remote-backend."
+                terraform -chdir="$(productName)/remote-backend" init -backend=false
+                terraform -chdir="$(productName)/remote-backend" apply -auto-approve \
+                  -var-file="terraform.tfvars.example"
+              fi
+
               STACK="$(productName)"
               ENV_FILE="${STACK}/environments/$(environment).tfvars"
               if [ ! -f "$ENV_FILE" ]; then
@@ -195,6 +204,15 @@ stages:
                       sudo apt-get install -y google-cloud-cli
                     fi
                     gcloud auth login --cred-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet
+
+                    if gcloud storage buckets describe "gs://$(stateBucket)" >/dev/null 2>&1; then
+                      echo "Remote state bucket gs://$(stateBucket) already exists."
+                    else
+                      echo "Creating remote state bucket gs://$(stateBucket) from $(productName)/remote-backend."
+                      terraform -chdir="$(productName)/remote-backend" init -backend=false
+                      terraform -chdir="$(productName)/remote-backend" apply -auto-approve \
+                        -var-file="terraform.tfvars.example"
+                    fi
 
                     STACK="$(productName)"
                     ENV_FILE="${STACK}/environments/$(environment).tfvars"
