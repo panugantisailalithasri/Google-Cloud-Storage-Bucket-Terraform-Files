@@ -1,86 +1,90 @@
-# Freyr-AI POC — GCP Cloud Storage
+# Freyr-AI Terraform
 
-Terraform for a regional Cloud Storage bucket that mirrors `freyr-ai-pac-superagent-agent-runtime`, using a POC bucket name.
+Reusable Terraform modules and application stacks for GCP infrastructure.
 
-This repo is currently set up for local Terraform execution first.
+## Repository layout
 
-## What this creates
+```text
+modules/
+  gcs_bucket/
+  cloudsql_postgres/
 
-| Setting | Value (matches the reference bucket) |
-| --- | --- |
-| Name | `freyr-ai-poc-storage` (override in `terraform.tfvars`) |
-| Location type | Region |
-| Location | `us-central1` (Iowa) |
-| Default storage class | Standard |
-| Hierarchical namespace | Off |
-| Requester Pays | Off |
-| Access control | Uniform |
-| Public access prevention | Inherited (not enforced on the bucket) |
-| Public access | Not public |
-| Soft delete | 7 days |
-| Object versioning | Off |
-| Bucket / object retention | None / disabled |
-| Default event-based hold | Disabled |
-| Encryption | Google-managed |
-| CORS | Not configured |
-| Lifecycle rules | None |
-| Labels / tags | None |
+microservice/
+  agent/
+    via-supervisor/
+      main.tf
+      variables.tf
+      outputs.tf
+      providers.tf
+      versions.tf
+      dev.tfvars.example
+```
 
-GCP still applies the default project IAM on create:
+## What is implemented now
 
-- Owners of the project → Storage Legacy Bucket Owner
-- Editors of the project → Storage Legacy Bucket Owner
-- Viewers of the project → Storage Legacy Bucket Reader and Storage Legacy Object Reader
+### Reusable modules
 
-Extra principals (for example the Vertex AI Reasoning Engine service agent with the `pac-mcp-catalog-prefix` condition) are optional; see `terraform.tfvars.example`.
+- `modules/gcs_bucket`
+  - regional GCS bucket
+  - uniform bucket-level access
+  - inherited public access prevention
+  - optional extra IAM members
+  - soft delete retention
 
-## Clone and run locally
+- `modules/cloudsql_postgres`
+  - PostgreSQL Cloud SQL instance
+  - private IP over an existing VPC
+  - reusable edition, tier, disk, SSL mode, and label settings
+
+### via-supervisor stack
+
+`microservice/agent/via-supervisor/main.tf` calls both reusable modules:
+
+- GCS bucket module
+- Cloud SQL PostgreSQL module
+
+The environment-specific values are defined in the tfvars file:
+
+- `microservice/agent/via-supervisor/dev.tfvars.example`
+
+That file currently uses the VPC requested for private resources:
+
+- `freya-ai-dev-vpc`
+
+## Cloud SQL settings captured from the reference screenshots
+
+The `via-supervisor` stack is configured to match the reference Cloud SQL instance as closely as Terraform allows:
+
+- instance name: `via-supervisor-devsecops-east4`
+- region: `us-east4`
+- engine: `POSTGRES_18`
+- edition: `ENTERPRISE`
+- machine type: `db-custom-1-3840`
+- availability: `ZONAL`
+- storage: `PD_SSD`, 10 GB, autoresize enabled
+- connectivity: private IP only
+- VPC: `freya-ai-dev-vpc`
+- SSL mode: `ALLOW_UNENCRYPTED_AND_ENCRYPTED`
+- point-in-time recovery: disabled
+- deletion protection: disabled
+- data cache: effectively disabled by using `ENTERPRISE` with a custom tier
+
+## How to use locally
 
 ```bash
 git clone <your-github-repo-url>
-cd <repo>
-cp terraform.tfvars.example terraform.tfvars
-# set project_id and a globally unique bucket_name
-```
+cd <repo>/microservice/agent/via-supervisor
+cp dev.tfvars.example dev.tfvars
+# update project_id and the bucket name if needed
 
-Prerequisites:
-
-- [Terraform](https://developer.hashicorp.com/terraform/install) `>= 1.6` (this repo pins `1.11.4` in `.terraform-version`)
-- GCP credentials, for example:
-
-```bash
 gcloud auth application-default login
-gcloud config set project freyr-ai
-```
-
-Bucket names are **globally unique**. If `freyr-ai-poc-storage` is taken, change `bucket_name`.
-
-Run Terraform directly:
-
-```bash
 terraform init
-terraform plan
-terraform apply
+terraform plan -var-file=dev.tfvars
+terraform apply -var-file=dev.tfvars
 ```
 
-`terraform.tfvars` is gitignored so local values stay off GitHub.
+## Notes
 
-Destroy:
-
-```bash
-terraform destroy
-```
-
-`force_destroy` is `false` by default, so destroy fails if the bucket still has objects. Set it to `true` only for a throwaway POC.
-
-## Files
-
-| File | Purpose |
-| --- | --- |
-| `versions.tf` | Terraform and Google provider versions |
-| `providers.tf` | Google provider |
-| `variables.tf` | Inputs |
-| `gcs-bucket.tf` | Bucket resource |
-| `iam.tf` | Optional extra IAM members |
-| `outputs.tf` | Name, URI, console URL |
-| `terraform.tfvars.example` | Sample values (copy to `terraform.tfvars`) |
+- keep environment-specific values in tfvars files
+- keep reusable logic inside `modules/`
+- for any resource that needs VPC connectivity, use the appropriate environment VPC name in the stack tfvars file

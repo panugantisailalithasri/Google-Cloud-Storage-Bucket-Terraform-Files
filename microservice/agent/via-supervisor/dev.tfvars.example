@@ -1,0 +1,49 @@
+project_id     = "freyr-ai"
+environment    = "dev"
+default_region = "us-east4"
+vpc_name       = "freya-ai-dev-vpc"
+
+common_labels = {
+  owner       = "platform"
+  cost_center = "dev"
+}
+
+gcs_bucket = {
+  enabled                     = true
+  name                        = "freyr-ai-via-supervisor-dev-runtime"
+  location                    = "US-CENTRAL1"
+  storage_class               = "STANDARD"
+  requester_pays              = false
+  uniform_bucket_level_access = true
+  public_access_prevention    = "inherited"
+  versioning_enabled          = false
+  soft_delete_retention_days  = 7
+  force_destroy               = false
+  labels = {
+    resource = "gcs"
+  }
+  additional_iam_members = []
+}
+
+cloudsql = {
+  enabled                                       = true
+  name                                          = "via-supervisor-devsecops-east4"
+  region                                        = "us-east4"
+  database_version                              = "POSTGRES_18"
+  edition                                       = "ENTERPRISE"
+  tier                                          = "db-custom-1-3840"
+  availability_type                             = "ZONAL"
+  disk_type                                     = "PD_SSD"
+  disk_size                                     = 10
+  disk_autoresize                               = true
+  ipv4_enabled                                  = false
+  ssl_mode                                      = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+  enable_private_path_for_google_cloud_services = false
+  authorized_networks                           = []
+  database_flags                                = []
+  deletion_protection                           = false
+  deletion_protection_enabled                   = false
+  labels = {
+    resource = "cloudsql"
+  }
+}
