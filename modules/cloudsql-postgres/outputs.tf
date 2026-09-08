@@ -9,6 +9,6 @@ output "connection_name" {
 }
 
 output "private_ip_address" {
-  description = "Private IP address assigned to the instance."
+  description = "Private IP address."
   value       = google_sql_database_instance.this.private_ip_address
 }

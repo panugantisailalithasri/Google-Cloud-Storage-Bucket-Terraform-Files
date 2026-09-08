@@ -1,15 +1,3 @@
-resource "google_project_service" "sqladmin" {
-  project            = var.project_id
-  service            = "sqladmin.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "servicenetworking" {
-  project            = var.project_id
-  service            = "servicenetworking.googleapis.com"
-  disable_on_destroy = false
-}
-
 data "google_compute_network" "private" {
   name    = var.private_network_name
   project = coalesce(var.network_project_id, var.project_id)
@@ -21,11 +9,6 @@ resource "google_sql_database_instance" "this" {
   region              = var.region
   database_version    = var.database_version
   deletion_protection = var.deletion_protection
-
-  depends_on = [
-    google_project_service.sqladmin,
-    google_project_service.servicenetworking,
-  ]
 
   settings {
     tier                        = var.tier

@@ -1,5 +1,6 @@
 # Terraform
 .terraform/
+.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan
@@ -9,34 +10,14 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-.terraformrc
-terraform.rc
-
-# Local variable files with secrets or environment-specific values
-terraform.tfvars
-*.auto.tfvars
-*.auto.tfvars.json
 backend.hcl
-backend.tf
-.env
-.env.*
 
-# Credentials
-*.json
-!**/package.json
-!**/tsconfig.json
-sa-key.json
-gcp-credentials.json
-credentials*.json
-service-account*.json
-*.pem
-*.key
-*.p12
+# Variable files with real values (keep examples)
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
 
-# Local reference assets
-assets/
-
-# OS / editor
+# Editor / OS
 .DS_Store
 .idea/
 .vscode/

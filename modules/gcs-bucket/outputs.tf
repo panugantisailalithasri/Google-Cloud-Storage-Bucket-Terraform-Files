@@ -4,11 +4,11 @@ output "name" {
 }
 
 output "url" {
-  description = "Bucket gs:// URL."
+  description = "gs:// URL of the bucket."
   value       = google_storage_bucket.this.url
 }
 
 output "self_link" {
-  description = "Bucket self link."
+  description = "API self link."
   value       = google_storage_bucket.this.self_link
 }

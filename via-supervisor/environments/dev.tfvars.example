@@ -1,0 +1,68 @@
+# via-supervisor / dev
+# Source of truth for every variable in ../variables.tf
+#   terraform plan -var-file=environments/dev.tfvars.example
+#
+# This agent: Cloud Storage + Secret Manager, ONE bucket.
+# Another agent with TWO buckets (same modules/gcs-bucket template):
+#   buckets = { bucket = { ... }, data = { ... } }
+
+product_name = "via-supervisor"
+environment  = "dev"
+project_id   = "freyr-ai"
+region       = "us-east1"
+location     = "us-east1"
+vpc_name     = "freya-ai-dev-vpc"
+network_project_id = null
+
+labels = {
+  team = "ai-agents"
+}
+
+enable_apis = true
+
+runtime_sa_resource = "sa"
+runtime_sa_roles = [
+  "roles/logging.logWriter",
+  "roles/monitoring.metricWriter",
+]
+
+buckets = {
+  bucket = {
+    storage_class      = "STANDARD"
+    versioning_enabled = true
+    force_destroy      = true
+    lifecycle_age_days = 90
+    kms_key_name       = null
+    runtime_role       = "roles/storage.objectUser"
+    extra_iam_members  = []
+  }
+}
+
+# Secrets for three products hosted in this agent stack.
+secret_keys = [
+  "via-supervisor",
+  "via-superagent",
+  "cognito",
+]
+
+# via-supervisor does not deploy Cloud Run.
+cloud_run = null
+
+cloudsql = {
+  name                                          = "via-supervisor-devsecops-east4"
+  region                                        = "us-east4"
+  database_version                              = "POSTGRES_18"
+  edition                                       = "ENTERPRISE"
+  tier                                          = "db-custom-1-3840"
+  availability_type                             = "ZONAL"
+  disk_type                                     = "PD_SSD"
+  disk_size                                     = 10
+  disk_autoresize                               = true
+  ipv4_enabled                                  = false
+  ssl_mode                                      = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+  enable_private_path_for_google_cloud_services = false
+  authorized_networks                           = []
+  database_flags                                = []
+  deletion_protection                           = false
+  deletion_protection_enabled                   = false
+}
