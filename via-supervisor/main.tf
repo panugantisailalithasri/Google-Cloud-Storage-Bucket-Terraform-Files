@@ -14,7 +14,9 @@ locals {
     var.labels
   )
 
-  sa_name = "${var.product_name}-${var.environment}-${var.runtime_sa_resource}"
+  sa_name           = "${var.product_name}-${var.environment}-${var.runtime_sa_resource}"
+  runtime_sa_email  = coalesce(var.existing_runtime_service_account_email, try(module.runtime_sa[0].email, null))
+  runtime_sa_member = local.runtime_sa_email == null ? null : "serviceAccount:${local.runtime_sa_email}"
 
   secret_ids = {
     for key in var.secret_keys : key => "${var.product_name}-${var.environment}-${key}"
@@ -80,6 +82,7 @@ resource "google_project_service" "required" {
 
 module "runtime_sa" {
   source = "../modules/iam"
+  count  = var.existing_runtime_service_account_email == null ? 1 : 0
 
   project_id    = var.project_id
   account_id    = trimsuffix(substr(local.sa_name, 0, 30), "-")
@@ -97,7 +100,7 @@ module "secrets" {
   labels     = local.labels
   secrets = {
     for key, secret_id in local.secret_ids : secret_id => {
-      accessors = [module.runtime_sa.member]
+      accessors = [local.runtime_sa_member]
     }
   }
 
@@ -125,7 +128,7 @@ module "buckets" {
     [
       {
         role   = each.value.runtime_role
-        member = module.runtime_sa.member
+        member = local.runtime_sa_member
       }
     ],
     each.value.extra_iam_members
@@ -142,7 +145,7 @@ module "cloud_run" {
   name                  = local.cloud_run_name
   location              = var.region
   image                 = local.cloud_run.image
-  service_account_email = module.runtime_sa.email
+  service_account_email = local.runtime_sa_email
   port                  = local.cloud_run.port
   cpu                   = local.cloud_run.cpu
   memory                = local.cloud_run.memory

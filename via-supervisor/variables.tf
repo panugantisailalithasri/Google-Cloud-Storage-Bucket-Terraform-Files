@@ -70,6 +70,12 @@ variable "runtime_sa_roles" {
   type        = list(string)
 }
 
+variable "existing_runtime_service_account_email" {
+  description = "Optional existing service account email to reuse instead of creating a new runtime service account."
+  type        = string
+  default     = null
+}
+
 variable "buckets" {
   description = "Map of resource suffixes to bucket settings. Set in environments/*.tfvars. Name is <product_name>-<environment>-<key>."
   type = map(object({

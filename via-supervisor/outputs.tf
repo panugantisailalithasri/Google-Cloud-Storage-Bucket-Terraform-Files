@@ -11,7 +11,7 @@ output "environment" {
 output "resource_names" {
   description = "Names following <product_name>-<environment>-<resource>."
   value = {
-    service_account = local.sa_name
+    service_account = local.runtime_sa_email == null ? local.sa_name : split("@", local.runtime_sa_email)[0]
     cloud_run       = var.cloud_run == null ? null : local.cloud_run_name
     cloudsql        = var.cloudsql == null ? null : local.cloudsql.name
     buckets         = { for key, bucket in module.buckets : key => bucket.name }
@@ -21,7 +21,7 @@ output "resource_names" {
 
 output "runtime_service_account" {
   description = "Runtime service account email."
-  value       = module.runtime_sa.email
+  value       = local.runtime_sa_email
 }
 
 output "bucket_names" {

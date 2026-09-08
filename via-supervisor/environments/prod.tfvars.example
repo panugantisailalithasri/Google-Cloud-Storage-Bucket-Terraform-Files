@@ -20,6 +20,8 @@ labels = {
 
 enable_apis = true
 
+existing_runtime_service_account_email = null
+
 runtime_sa_resource = "sa"
 runtime_sa_roles = [
   "roles/logging.logWriter",

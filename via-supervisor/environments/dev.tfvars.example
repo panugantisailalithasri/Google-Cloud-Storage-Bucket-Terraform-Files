@@ -26,6 +26,10 @@ labels = {
 
 enable_apis = true
 
+# Reuse the existing Azure DevOps deployer service account so Terraform does
+# not need iam.serviceAccounts.create on the project.
+existing_runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
+
 runtime_sa_resource = "sa"
 runtime_sa_roles = [
   "roles/logging.logWriter",
