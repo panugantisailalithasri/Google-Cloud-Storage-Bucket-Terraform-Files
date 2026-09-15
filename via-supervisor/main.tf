@@ -1,9 +1,8 @@
-# via-supervisor agent stack.
+# via-supervisor DSO stack.
 # Calls reusable templates in ../modules. Env values: environments/<env>.tfvars
 
 locals {
-  # Naming convention: <product_name>-<environment>-<resource>
-  location = coalesce(var.location, var.region)
+  location = var.location
 
   labels = merge(
     {
@@ -14,38 +13,27 @@ locals {
     var.labels
   )
 
-  sa_name = "${var.product_name}-${var.environment}-${var.runtime_sa_resource}"
+  vpc_network_uri = startswith(var.vpc_network, "projects/") ? var.vpc_network : "projects/${var.project_id}/global/networks/${var.vpc_network}"
+  vpc_subnet_uri  = startswith(var.vpc_subnet, "projects/") ? var.vpc_subnet : "projects/${var.project_id}/regions/${var.region}/subnetworks/${var.vpc_subnet}"
 
-  secret_ids = {
-    for key in var.secret_keys : key => "${var.product_name}-${var.environment}-${key}"
-  }
-
-  # Enable only the APIs this agent actually uses.
   required_apis = toset(concat(
-    ["iam.googleapis.com", "iamcredentials.googleapis.com"],
+    [
+      "iam.googleapis.com",
+      "iamcredentials.googleapis.com",
+      "compute.googleapis.com",
+      "servicenetworking.googleapis.com",
+    ],
     length(var.buckets) > 0 ? ["storage.googleapis.com"] : [],
-    length(var.secret_keys) > 0 ? ["secretmanager.googleapis.com"] : [],
-    var.cloud_run != null ? ["run.googleapis.com", "artifactregistry.googleapis.com"] : [],
+    length(var.secrets) > 0 ? ["secretmanager.googleapis.com"] : [],
+    length(var.sql_instances) > 0 ? ["sqladmin.googleapis.com"] : [],
+    length(var.cloud_run_services) > 0 ? [
+      "run.googleapis.com",
+      "artifactregistry.googleapis.com",
+      "aiplatform.googleapis.com",
+      "cloudtrace.googleapis.com",
+      "telemetry.googleapis.com",
+    ] : [],
   ))
-
-  # Module arguments are evaluated even when count = 0.
-  cloud_run = coalesce(var.cloud_run, {
-    image               = "unused.local/app:disabled"
-    resource            = "run"
-    port                = 8080
-    cpu                 = "1"
-    memory              = "512Mi"
-    min_instances       = 0
-    max_instances       = 3
-    timeout_seconds     = 60
-    env_vars            = {}
-    secret_env_vars     = {}
-    ingress             = "INGRESS_TRAFFIC_INTERNAL_ONLY"
-    invoker_members     = []
-    deletion_protection = true
-  })
-
-  cloud_run_name = "${var.product_name}-${var.environment}-${local.cloud_run.resource}"
 }
 
 resource "google_project_service" "required" {
@@ -56,14 +44,15 @@ resource "google_project_service" "required" {
   disable_on_destroy = false
 }
 
-module "runtime_sa" {
-  source = "../modules/iam"
+module "service_accounts" {
+  source   = "../modules/iam"
+  for_each = var.service_accounts
 
   project_id    = var.project_id
-  account_id    = trimsuffix(substr(local.sa_name, 0, 30), "-")
-  display_name  = "${var.product_name} ${var.environment} runtime"
-  description   = "Runtime identity for ${local.sa_name}"
-  project_roles = var.runtime_sa_roles
+  account_id    = each.value.account_id
+  display_name  = each.value.display_name
+  description   = each.value.description
+  project_roles = each.value.project_roles
 
   depends_on = [google_project_service.required]
 }
@@ -74,23 +63,22 @@ module "secrets" {
   project_id = var.project_id
   labels     = local.labels
   secrets = {
-    for key, secret_id in local.secret_ids : secret_id => {
-      accessors = [module.runtime_sa.member]
+    for key, secret in var.secrets : secret.secret_id => {
+      accessors = [
+        for sa_key in secret.accessor_sa_keys : module.service_accounts[sa_key].member
+      ]
     }
   }
 
   depends_on = [google_project_service.required]
 }
 
-# Same gcs-bucket module for every agent. How many buckets is var.buckets:
-#   1 key  → agent A (via-supervisor-dev-bucket)
-#   2 keys → agent B (via-supervisor-dev-bucket + via-supervisor-dev-data)
 module "buckets" {
   source   = "../modules/gcs-bucket"
   for_each = var.buckets
 
   project_id         = var.project_id
-  name               = "${var.product_name}-${var.environment}-${each.key}"
+  name               = each.value.name
   location           = local.location
   storage_class      = each.value.storage_class
   force_destroy      = each.value.force_destroy
@@ -101,9 +89,9 @@ module "buckets" {
 
   iam_members = concat(
     [
-      {
+      for sa_key in each.value.accessor_sa_keys : {
         role   = each.value.runtime_role
-        member = module.runtime_sa.member
+        member = module.service_accounts[sa_key].member
       }
     ],
     each.value.extra_iam_members
@@ -112,36 +100,76 @@ module "buckets" {
   depends_on = [google_project_service.required]
 }
 
+module "sql" {
+  source   = "../modules/cloud-sql"
+  for_each = var.sql_instances
+
+  project_id          = var.project_id
+  name                = each.value.name
+  region              = var.region
+  database_version    = each.value.database_version
+  tier                = each.value.tier
+  disk_size_gb        = each.value.disk_size_gb
+  private_network     = local.vpc_network_uri
+  ssl_mode            = each.value.ssl_mode
+  databases           = each.value.databases
+  iam_authentication  = each.value.iam_authentication
+  pitr_enabled        = each.value.pitr_enabled
+  query_insights      = each.value.query_insights
+  deletion_protection = each.value.deletion_protection
+  kms_key_name        = each.value.kms_key_name
+  labels              = local.labels
+
+  depends_on = [google_project_service.required]
+}
+
 module "cloud_run" {
-  source = "../modules/cloud-run"
-  count  = var.cloud_run == null ? 0 : 1
+  source   = "../modules/cloud-run"
+  for_each = var.cloud_run_services
 
   project_id            = var.project_id
-  name                  = local.cloud_run_name
+  name                  = each.value.name
   location              = var.region
-  image                 = local.cloud_run.image
-  service_account_email = module.runtime_sa.email
-  port                  = local.cloud_run.port
-  cpu                   = local.cloud_run.cpu
-  memory                = local.cloud_run.memory
-  min_instances         = local.cloud_run.min_instances
-  max_instances         = local.cloud_run.max_instances
-  timeout_seconds       = local.cloud_run.timeout_seconds
-  env_vars = merge(local.cloud_run.env_vars, {
-    PRODUCT_NAME = var.product_name
-    ENVIRONMENT  = var.environment
+  image                 = each.value.image
+  service_account_email = module.service_accounts[each.value.sa_key].email
+  port                  = each.value.port
+  cpu                   = each.value.cpu
+  memory                = each.value.memory
+  min_instances         = each.value.min_instances
+  max_instances         = each.value.max_instances
+  concurrency           = each.value.concurrency
+  timeout_seconds       = each.value.timeout_seconds
+  vpc_network           = local.vpc_network_uri
+  vpc_subnet            = local.vpc_subnet_uri
+  vpc_egress            = var.vpc_egress
+  env_vars = merge(each.value.env_vars, {
+    PRODUCT_NAME                = var.product_name
+    ENVIRONMENT                 = var.environment
+    GEMINI_ENTERPRISE_APP_ID    = var.gemini_enterprise.application_id
+    VIA_AGENT_ID                = var.gemini_enterprise.via_agent_id
+    VIA_AGENT_DISPLAY_NAME      = var.gemini_enterprise.agent_display_name
+    VIA_TRACING_ENABLED         = tostring(var.observability.via_tracing_enabled)
+    PAC_TRACING_ENABLED         = tostring(var.observability.pac_tracing_enabled)
+    OTEL_EXPORTER_OTLP_ENDPOINT = var.observability.traces_endpoint
+    REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
+    CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
   })
   secret_env_vars = {
-    for env_name, secret_key in local.cloud_run.secret_env_vars :
-    env_name => local.secret_ids[secret_key]
+    for env_name, secret_key in each.value.secret_env_keys :
+    env_name => var.secrets[secret_key].secret_id
   }
-  ingress             = local.cloud_run.ingress
-  invoker_members     = local.cloud_run.invoker_members
-  deletion_protection = local.cloud_run.deletion_protection
+  ingress               = each.value.ingress
+  allow_unauthenticated = each.value.allow_unauthenticated
+  invoker_members = concat(
+    [for sa_key in each.value.invoker_sa_keys : module.service_accounts[sa_key].member],
+    each.value.extra_invoker_members
+  )
+  deletion_protection = each.value.deletion_protection
   labels              = local.labels
 
   depends_on = [
     google_project_service.required,
     module.secrets,
+    module.sql,
   ]
 }

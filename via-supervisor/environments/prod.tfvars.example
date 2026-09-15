@@ -1,47 +1,217 @@
-# via-supervisor / prod
+# via-supervisor / DSO (prod pipeline)
 # Source of truth for every variable in ../variables.tf
-#   terraform plan -var-file=environments/prod.tfvars.example
-#
-# This agent: Cloud Storage + Secret Manager, ONE bucket (via-supervisor-prod-bucket).
-# Another agent with TWO buckets (same modules/gcs-bucket template):
-#   buckets = { bucket = { ... }, data = { ... } }
+# GCP DSO inventory: project freyr-ai, region us-east4.
 
 product_name = "via-supervisor"
 environment  = "prod"
 project_id   = "freyr-ai"
-region       = "us-east1"
-location     = "us-east1"
+region       = "us-east4"
+location     = "us-east4"
 
 labels = {
-  team = "ai-agents"
+  team    = "ai-agents"
+  program = "dso"
 }
 
 enable_apis = true
 
-runtime_sa_resource = "sa"
-runtime_sa_roles = [
-  "roles/logging.logWriter",
-  "roles/monitoring.metricWriter",
-]
+vpc_network = "freya-ai-dev-vpc"
+vpc_subnet  = "freya-ai-dev-subnet-us-east4"
+vpc_egress  = "PRIVATE_RANGES_ONLY"
+
+service_accounts = {
+  supervisor = {
+    account_id   = "via-supervisor-dso-sa"
+    display_name = "VIA supervisor DSO"
+    description  = "Runtime identity for via-supervisor-dso"
+    project_roles = [
+      "roles/logging.logWriter",
+      "roles/monitoring.metricWriter",
+      "roles/aiplatform.user",
+      "roles/cloudsql.client",
+      "roles/telemetry.tracesWriter",
+    ]
+  }
+  superagent = {
+    account_id   = "via-superagent-dso-sa"
+    display_name = "VIA superagent DSO"
+    description  = "Runtime identity for via-superagent-dso"
+    project_roles = [
+      "roles/logging.logWriter",
+      "roles/monitoring.metricWriter",
+      "roles/aiplatform.user",
+      "roles/cloudsql.client",
+      "roles/secretmanager.secretAccessor",
+    ]
+  }
+}
 
 buckets = {
-  bucket = {
+  supervisor_config = {
+    name               = "via-supervisor-config-dso"
     storage_class      = "STANDARD"
     versioning_enabled = true
     force_destroy      = false
     lifecycle_age_days = 90
     kms_key_name       = null
-    runtime_role       = "roles/storage.objectUser"
+    runtime_role       = "roles/storage.objectViewer"
+    accessor_sa_keys   = ["supervisor"]
+    extra_iam_members  = []
+  }
+  superagent_config = {
+    name               = "via-superagent-config-dso"
+    storage_class      = "STANDARD"
+    versioning_enabled = true
+    force_destroy      = false
+    lifecycle_age_days = 90
+    kms_key_name       = null
+    runtime_role       = "roles/storage.objectViewer"
+    accessor_sa_keys   = ["superagent"]
     extra_iam_members  = []
   }
 }
 
-# Secrets for three products hosted in this agent stack.
-secret_keys = [
-  "via-supervisor",
-  "via-superagent",
-  "cognito",
-]
+secrets = {
+  supervisor = {
+    secret_id        = "via-supervisor-dso-secret"
+    accessor_sa_keys = ["supervisor"]
+  }
+  supervisor_session = {
+    secret_id        = "via-supervisor-session-dso-secret"
+    accessor_sa_keys = ["supervisor"]
+  }
+  supervisor_memory = {
+    secret_id        = "via-supervisor-memory-service-dso-secret"
+    accessor_sa_keys = ["supervisor"]
+  }
+  superagent = {
+    secret_id        = "via-superagent-dso-secret"
+    accessor_sa_keys = ["superagent"]
+  }
+  superagent_session = {
+    secret_id        = "via-superagent-session-dso-secret"
+    accessor_sa_keys = ["superagent"]
+  }
+  cognito_m2m = {
+    secret_id        = "via-cognito-m2m-dso"
+    accessor_sa_keys = ["supervisor", "superagent"]
+  }
+}
 
-# via-supervisor does not deploy Cloud Run.
-cloud_run = null
+sql_instances = {
+  supervisor_sessions = {
+    name                = "via-supervisor-sql-dso"
+    database_version    = "POSTGRES_18"
+    tier                = "db-custom-2-4096"
+    disk_size_gb        = 10
+    databases           = ["ff-freya-supervisor-pac-adk", "ff-freya-supervisor-pac-langgraph"]
+    iam_authentication  = true
+    pitr_enabled        = true
+    query_insights      = true
+    deletion_protection = true
+    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    kms_key_name        = null
+  }
+  superagent_sessions = {
+    name                = "via-superagent-sql-dso"
+    database_version    = "POSTGRES_18"
+    tier                = "db-custom-2-4096"
+    disk_size_gb        = 10
+    databases           = ["ff-freya-sa-pac-langgraph"]
+    iam_authentication  = true
+    pitr_enabled        = true
+    query_insights      = true
+    deletion_protection = true
+    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    kms_key_name        = null
+  }
+  supervisor_memory = {
+    name                = "via-supervisor-memory-sql-dso"
+    database_version    = "POSTGRES_18"
+    tier                = "db-custom-2-8192"
+    disk_size_gb        = 100
+    databases           = ["mem0_db"]
+    iam_authentication  = true
+    pitr_enabled        = true
+    query_insights      = true
+    deletion_protection = true
+    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    kms_key_name        = "projects/freyr-ai/locations/us-east4/keyRings/via-dso/cryptoKeys/cloud-sql"
+  }
+}
+
+cloud_run_services = {
+  supervisor = {
+    name    = "via-supervisor-dso"
+    image   = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
+    sa_key  = "supervisor"
+    port    = 8080
+    cpu     = "2"
+    memory  = "4Gi"
+    min_instances         = 1
+    max_instances         = 3
+    concurrency           = 320
+    timeout_seconds       = 300
+    env_vars = {
+      SESSION_SERVICE_SECRET_NAME = "via-supervisor-session-dso-secret"
+      MEMORY_SERVICE_SECRET_NAME  = "via-supervisor-memory-service-dso-secret"
+      GCS_CONFIG_BUCKET           = "via-supervisor-config-dso"
+      GCS_CONFIG_OBJECT           = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
+    }
+    secret_env_keys = {
+      VIA_SUPERVISOR_SECRET = "supervisor"
+      VIA_SESSION_SECRET    = "supervisor_session"
+      VIA_MEMORY_SECRET     = "supervisor_memory"
+      VIA_COGNITO_M2M       = "cognito_m2m"
+    }
+    ingress               = "INGRESS_TRAFFIC_ALL"
+    allow_unauthenticated = true
+    invoker_sa_keys       = []
+    extra_invoker_members = []
+    deletion_protection   = true
+  }
+  superagent = {
+    name    = "via-superagent-dso"
+    image   = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
+    sa_key  = "superagent"
+    port    = 8080
+    cpu     = "2"
+    memory  = "4Gi"
+    min_instances         = 1
+    max_instances         = 3
+    concurrency           = 320
+    timeout_seconds       = 300
+    env_vars = {
+      SESSION_SERVICE_SECRET_NAME = "via-superagent-session-dso-secret"
+      GCS_CONFIG_BUCKET           = "via-superagent-config-dso"
+      GCS_CONFIG_OBJECT           = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
+    }
+    secret_env_keys = {
+      VIA_SUPERAGENT_SECRET = "superagent"
+      VIA_SESSION_SECRET    = "superagent_session"
+      VIA_COGNITO_M2M       = "cognito_m2m"
+    }
+    ingress               = "INGRESS_TRAFFIC_ALL"
+    allow_unauthenticated = false
+    invoker_sa_keys       = ["supervisor"]
+    extra_invoker_members = []
+    deletion_protection   = true
+  }
+}
+
+gemini_enterprise = {
+  application_id     = "freyr-gemini-enterprise_1776958711324"
+  via_agent_id       = "14759281635611028992"
+  agent_display_name = "VIA"
+}
+
+observability = {
+  via_tracing_enabled = true
+  traces_endpoint     = "https://telemetry.googleapis.com:443/v1/traces"
+  pac_tracing_enabled = false
+}
+
+pac_external = {
+  regulatory_mcp = "https://api.devsecops.freyafusion.com/grr/requirement-mcp"
+  concept_graph  = "https://api.devsecops.freyafusion.com/grr/graph-service"
+}

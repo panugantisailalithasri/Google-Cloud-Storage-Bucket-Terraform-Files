@@ -97,16 +97,39 @@ variable "ingress" {
 }
 
 variable "invoker_members" {
-  description = "Identities granted roles/run.invoker. Public principals are rejected."
+  description = "Identities granted roles/run.invoker. Use allow_unauthenticated for allUsers."
   type        = list(string)
   default     = []
+}
 
-  validation {
-    condition = alltrue([
-      for member in var.invoker_members : !contains(["allUsers", "allAuthenticatedUsers"], member)
-    ])
-    error_message = "Unauthenticated Cloud Run (allUsers / allAuthenticatedUsers) is not allowed."
-  }
+variable "allow_unauthenticated" {
+  description = "Grant roles/run.invoker to allUsers. Only for services that authenticate in-app (for example Cognito)."
+  type        = bool
+  default     = false
+}
+
+variable "concurrency" {
+  description = "Max concurrent requests per instance."
+  type        = number
+  default     = 80
+}
+
+variable "vpc_network" {
+  description = "VPC network for Direct VPC egress. Empty skips VPC attachment."
+  type        = string
+  default     = ""
+}
+
+variable "vpc_subnet" {
+  description = "Subnetwork for Direct VPC egress."
+  type        = string
+  default     = ""
+}
+
+variable "vpc_egress" {
+  description = "Cloud Run VPC egress. PRIVATE_RANGES_ONLY or ALL_TRAFFIC."
+  type        = string
+  default     = "PRIVATE_RANGES_ONLY"
 }
 
 variable "deletion_protection" {

@@ -4,17 +4,17 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "Default GCP region for provider and regional resources. Set in environments/*.tfvars."
+  description = "Default GCP region. Set in environments/*.tfvars."
   type        = string
 }
 
 variable "location" {
-  description = "Cloud Storage location. Set in environments/*.tfvars (usually the same as region)."
+  description = "Cloud Storage location. Set in environments/*.tfvars."
   type        = string
 }
 
 variable "product_name" {
-  description = "Product or agent name. Set in environments/*.tfvars. Combined as <product_name>-<environment>-<resource>."
+  description = "Product or agent name. Set in environments/*.tfvars."
   type        = string
 
   validation {
@@ -28,8 +28,8 @@ variable "environment" {
   type        = string
 
   validation {
-    condition     = contains(["dev", "prod"], var.environment)
-    error_message = "environment must be dev or prod."
+    condition     = contains(["dev", "prod", "dso"], var.environment)
+    error_message = "environment must be dev, prod, or dso."
   }
 }
 
@@ -43,72 +43,119 @@ variable "enable_apis" {
   type        = bool
 }
 
-variable "runtime_sa_resource" {
-  description = "Resource suffix for the runtime service account. Set in environments/*.tfvars (example: sa)."
+variable "vpc_network" {
+  description = "VPC network name or self link for Cloud Run Direct VPC egress and Cloud SQL private IP."
   type        = string
-
-  validation {
-    condition     = can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", var.runtime_sa_resource))
-    error_message = "runtime_sa_resource must be lowercase letters, digits, and hyphens (example: sa)."
-  }
 }
 
-variable "runtime_sa_roles" {
-  description = "Project-level roles for the runtime service account. Set in environments/*.tfvars."
-  type        = list(string)
+variable "vpc_subnet" {
+  description = "Subnetwork name or self link for Cloud Run Direct VPC egress."
+  type        = string
+}
+
+variable "vpc_egress" {
+  description = "Cloud Run VPC egress setting."
+  type        = string
+}
+
+variable "service_accounts" {
+  description = "Map of service accounts to create. Key is a local handle used by buckets, secrets, and Cloud Run."
+  type = map(object({
+    account_id    = string
+    display_name  = string
+    description   = string
+    project_roles = list(string)
+  }))
 }
 
 variable "buckets" {
-  description = "Map of resource suffixes to bucket settings. Set in environments/*.tfvars. Name is <product_name>-<environment>-<key>."
+  description = "GCS buckets. Set name to the full bucket name. accessor_sa_keys references service_accounts keys."
   type = map(object({
+    name               = string
     storage_class      = string
     versioning_enabled = bool
     force_destroy      = bool
     lifecycle_age_days = number
     kms_key_name       = optional(string)
     runtime_role       = string
+    accessor_sa_keys   = list(string)
     extra_iam_members = list(object({
       role   = string
       member = string
     }))
   }))
-
-  validation {
-    condition = alltrue([
-      for key in keys(var.buckets) : can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", key))
-    ])
-    error_message = "Each buckets map key is the resource suffix only (example: bucket), and must be lowercase."
-  }
 }
 
-variable "secret_keys" {
-  description = "Resource suffixes for secrets. Set in environments/*.tfvars. Name is <product_name>-<environment>-<key>."
-  type        = list(string)
-
-  validation {
-    condition = alltrue([
-      for key in var.secret_keys : can(regex("^[a-z][a-z0-9-]*[a-z0-9]$", key))
-    ])
-    error_message = "Each secret key is the resource suffix only and must be lowercase (example: app-config)."
-  }
+variable "secrets" {
+  description = "Secret Manager secrets. secret_id is the full secret name. accessor_sa_keys references service_accounts keys."
+  type = map(object({
+    secret_id        = string
+    accessor_sa_keys = list(string)
+  }))
 }
 
-variable "cloud_run" {
-  description = "Cloud Run settings. Set null in environments/*.tfvars to skip Cloud Run."
-  type = object({
-    image               = string
-    resource            = string
-    port                = number
-    cpu                 = string
-    memory              = string
-    min_instances       = number
-    max_instances       = number
-    timeout_seconds     = number
-    env_vars            = map(string)
-    secret_env_vars     = map(string)
-    ingress             = string
-    invoker_members     = list(string)
+variable "sql_instances" {
+  description = "Cloud SQL instances keyed by a local handle."
+  type = map(object({
+    name                = string
+    database_version    = string
+    tier                = string
+    disk_size_gb        = number
+    databases           = list(string)
+    iam_authentication  = bool
+    pitr_enabled        = bool
+    query_insights      = bool
     deletion_protection = bool
+    ssl_mode            = string
+    kms_key_name        = optional(string)
+  }))
+}
+
+variable "cloud_run_services" {
+  description = "Cloud Run services keyed by a local handle. sa_key references service_accounts."
+  type = map(object({
+    name                  = string
+    image                 = string
+    sa_key                = string
+    port                  = number
+    cpu                   = string
+    memory                = string
+    min_instances         = number
+    max_instances         = number
+    concurrency           = number
+    timeout_seconds       = number
+    env_vars              = map(string)
+    secret_env_keys       = map(string)
+    ingress               = string
+    allow_unauthenticated = bool
+    invoker_sa_keys       = list(string)
+    extra_invoker_members = list(string)
+    deletion_protection   = bool
+  }))
+}
+
+variable "gemini_enterprise" {
+  description = "Gemini Enterprise identifiers injected as Cloud Run env vars."
+  type = object({
+    application_id     = string
+    via_agent_id       = string
+    agent_display_name = string
   })
-  nullable = true
+}
+
+variable "observability" {
+  description = "Tracing settings injected as Cloud Run env vars."
+  type = object({
+    via_tracing_enabled = bool
+    traces_endpoint     = string
+    pac_tracing_enabled = bool
+  })
+}
+
+variable "pac_external" {
+  description = "PAC MCP and graph endpoints."
+  type = object({
+    regulatory_mcp = string
+    concept_graph  = string
+  })
 }

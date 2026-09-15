@@ -1,8 +1,8 @@
 # GCP Terraform for agents and microservices
 
-Reusable **modules** for Cloud Storage, IAM, Secret Manager, and Cloud Run. Each **agent / microservice** has its own folder (starting with `via-supervisor`). Environment values live under that folder in `environments/`. Each agent has a **dedicated Terraform state bucket**.
+Reusable **modules** for Cloud Storage, IAM, Secret Manager, Cloud Run, and Cloud SQL. Each **agent / microservice** has its own folder (starting with `via-supervisor`). Environment values live under that folder in `environments/`. Each agent has a **dedicated Terraform state bucket**.
 
-**via-supervisor** deploys Cloud Storage and Secret Manager only (no Cloud Run). Bucket count is data: this agent defines **one** bucket; another agent uses the **same** `modules/gcs-bucket` template with **two** keys.
+**via-supervisor** deploys the DSO footprint in `freyr-ai` / `us-east4`: two Cloud Run services, two config buckets, six secrets, three Cloud SQL instances, on VPC `freya-ai-dev-vpc`. All values come from `environments/*.tfvars`.
 
 ## Layout
 
@@ -12,14 +12,28 @@ modules/                         Reusable GCP templates (do not run Terraform he
   iam/
   secret-manager/
   cloud-run/
+  cloud-sql/
 
-via-supervisor/                  This agent's stack
+via-supervisor/                  DSO stack for VIA supervisor + superagent
   remote-backend/                Creates gs://via-supervisor-tfstate (run once)
   environments/
-    dev.tfvars.example           Dev values
-    prod.tfvars.example          Prod values
+    dev.tfvars.example           DSO/dev values
+    prod.tfvars.example          DSO/prod values
   main.tf                        Calls the modules
 ```
+
+## DSO resources (from tfvars)
+
+| Kind | Names |
+| --- | --- |
+| Cloud Run | `via-supervisor-dso`, `via-superagent-dso` |
+| Service accounts | `via-supervisor-dso-sa`, `via-superagent-dso-sa` |
+| GCS | `via-supervisor-config-dso`, `via-superagent-config-dso` |
+| Secrets | `via-supervisor-dso-secret`, `via-supervisor-session-dso-secret`, `via-supervisor-memory-service-dso-secret`, `via-superagent-dso-secret`, `via-superagent-session-dso-secret`, `via-cognito-m2m-dso` |
+| Cloud SQL | `via-supervisor-sql-dso`, `via-superagent-sql-dso`, `via-supervisor-memory-sql-dso` |
+| VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
+
+Supervisor Cloud Run allows `allUsers` invoke because Cognito OAuth is enforced in the app. Superagent invoke is limited to the supervisor service account. GCS JSON config objects are not uploaded by Terraform.
 
 A new agent is a copy of `via-supervisor/` renamed to the product name. That copy gets its own state bucket (`<product_name>-tfstate`).
 
@@ -46,35 +60,7 @@ cp backend.hcl.example backend.hcl   # bucket = via-supervisor-tfstate, prefix =
 terraform init -backend-config=backend.hcl
 ```
 
-ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically.
-
-## One bucket vs two buckets (same module)
-
-`modules/gcs-bucket` is the template. The agent env file decides how many times it is instantiated (`for_each = var.buckets`).
-
-**via-supervisor (agent A) — 1 bucket + secrets**
-
-```hcl
-buckets = {
-  bucket = {}
-}
-secret_keys = ["app-config"]
-```
-
-Creates `via-supervisor-dev-bucket` and three secrets: `via-supervisor-dev-via-supervisor`, `via-supervisor-dev-via-superagent`, and `via-supervisor-dev-cognito`. Cloud Run is not created.
-
-**Another agent (agent B) — 2 buckets, same module**
-
-Copy `via-supervisor/` to `agent-b/`, then in `agent-b/environments/dev.tfvars`:
-
-```hcl
-buckets = {
-  bucket = {}
-  data   = {}
-}
-```
-
-Creates `agent-b-dev-bucket` and `agent-b-dev-data`. Still `source = "../modules/gcs-bucket"`. That agent gets its own state bucket `gs://agent-b-tfstate` from `agent-b/remote-backend/`.
+ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically. Pipeline variables also record DSO project `freyr-ai`, region `us-east4`, VPC `freya-ai-dev-vpc`, and subnet `freya-ai-dev-subnet-us-east4`.
 
 ## Naming convention
 
@@ -82,21 +68,23 @@ Creates `agent-b-dev-bucket` and `agent-b-dev-data`. Still `source = "../modules
 <product_name>-<environment>-<resource>
 ```
 
-For `via-supervisor` + `prod`:
+DSO names are set explicitly in tfvars (not derived as `<product>-<env>-<resource>`):
 
-| You pass | Created name |
+| Resource | Name |
 | --- | --- |
-| `buckets = { bucket = {} }` | `via-supervisor-prod-bucket` |
-| `runtime_sa_resource = "sa"` | `via-supervisor-prod-sa` |
-| `secret_keys` for via-supervisor, via-superagent, cognito | `via-supervisor-prod-via-supervisor`, `via-supervisor-prod-via-superagent`, `via-supervisor-prod-cognito` |
-| Remote backend | `via-supervisor-tfstate` (prefix `prod`) |
+| Supervisor Cloud Run | `via-supervisor-dso` |
+| Superagent Cloud Run | `via-superagent-dso` |
+| Config buckets | `via-supervisor-config-dso`, `via-superagent-config-dso` |
+| Remote backend | `via-supervisor-tfstate` (prefix `dev` or `prod`) |
 
 ## Security defaults
 
-- Buckets: uniform IAM, public access prevention, versioning, no `allUsers`
+- Buckets: uniform IAM, public access prevention, versioning, no public principals
 - IAM: no service account keys; owner/editor/viewer rejected
 - Secrets: Terraform creates the secret resource only — no payloads in tfvars
-- via-supervisor uses Cloud Storage and Secret Manager only. Cloud Run stays in the stack as an optional module (`count = 0` unless `cloud_run` is set) so other agents can enable it without changing `modules/`.
+- Superagent Cloud Run is not publicly invokable; only the supervisor SA has `roles/run.invoker`
+- Supervisor Cloud Run allows `allUsers` because Cognito OAuth is enforced in the application
+- Cloud SQL has no public IP; private VPC only
 - State buckets: same private bucket module; `force_destroy` is false
 
 ## Prerequisites

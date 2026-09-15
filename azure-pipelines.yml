@@ -36,7 +36,11 @@ variables:
   statePrefix: ${{ parameters.environment }}
   # ARM service connection used to mint an OIDC token for GCP WIF
   armServiceConnection: GCP_freyrai_service_role
+  gcpProjectId: freyr-ai
   gcpProjectNumber: "711982279551"
+  gcpRegion: us-east4
+  gcpVpc: freya-ai-dev-vpc
+  gcpSubnet: freya-ai-dev-subnet-us-east4
   gcpPoolId: azure-devops-pool-v3
   gcpProviderId: azure-devops-provider-v3
   gcpServiceAccountEmail: ado-deployer-v3@freyr-ai.iam.gserviceaccount.com
