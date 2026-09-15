@@ -68,6 +68,12 @@ variable "service_accounts" {
   }))
 }
 
+variable "existing_runtime_service_account_email" {
+  description = "Optional existing service account email to reuse instead of creating a new runtime service account."
+  type        = string
+  default     = null
+}
+
 variable "buckets" {
   description = "GCS buckets. Set name to the full bucket name. accessor_sa_keys references service_accounts keys."
   type = map(object({
@@ -158,4 +164,32 @@ variable "pac_external" {
     regulatory_mcp = string
     concept_graph  = string
   })
+}
+
+variable "cloudsql" {
+  description = "Cloud SQL settings. Set null in environments/*.tfvars to skip Cloud SQL."
+  type = object({
+    name                                          = string
+    region                                        = string
+    database_version                              = string
+    edition                                       = string
+    tier                                          = string
+    availability_type                             = string
+    disk_type                                     = string
+    disk_size                                     = number
+    disk_autoresize                               = bool
+    ipv4_enabled                                  = bool
+    ssl_mode                                      = string
+    enable_private_path_for_google_cloud_services = bool
+    authorized_networks                           = list(string)
+    backup_enabled                                = bool
+    point_in_time_recovery_enabled                = bool
+    database_flags = list(object({
+      name  = string
+      value = string
+    }))
+    deletion_protection         = bool
+    deletion_protection_enabled = bool
+  })
+  nullable = true
 }
