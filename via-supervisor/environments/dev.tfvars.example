@@ -1,6 +1,7 @@
-# via-supervisor / DSO (dev pipeline)
+# via-supervisor / dev
 # Source of truth for every variable in ../variables.tf
-# GCP DSO inventory: project freyr-ai, region us-east4.
+# Naming: <product_name>-<environment>-<resource>
+# Cloud SQL uses the instance already created in GCP (do not create -dso copies).
 
 product_name = "via-supervisor"
 environment  = "dev"
@@ -21,9 +22,9 @@ vpc_egress  = "PRIVATE_RANGES_ONLY"
 
 service_accounts = {
   supervisor = {
-    account_id   = "via-supervisor-dso-sa"
-    display_name = "VIA supervisor DSO"
-    description  = "Runtime identity for via-supervisor-dso"
+    account_id   = "via-supervisor-dev-sa"
+    display_name = "VIA supervisor dev"
+    description  = "Runtime identity for via-supervisor-dev-run"
     project_roles = [
       "roles/logging.logWriter",
       "roles/monitoring.metricWriter",
@@ -33,9 +34,9 @@ service_accounts = {
     ]
   }
   superagent = {
-    account_id   = "via-superagent-dso-sa"
-    display_name = "VIA superagent DSO"
-    description  = "Runtime identity for via-superagent-dso"
+    account_id   = "via-superagent-dev-sa"
+    display_name = "VIA superagent dev"
+    description  = "Runtime identity for via-superagent-dev-run"
     project_roles = [
       "roles/logging.logWriter",
       "roles/monitoring.metricWriter",
@@ -48,7 +49,7 @@ service_accounts = {
 
 buckets = {
   supervisor_config = {
-    name               = "via-supervisor-config-dso"
+    name               = "via-supervisor-dev-bucket"
     storage_class      = "STANDARD"
     versioning_enabled = true
     force_destroy      = false
@@ -59,7 +60,7 @@ buckets = {
     extra_iam_members  = []
   }
   superagent_config = {
-    name               = "via-superagent-config-dso"
+    name               = "via-superagent-dev-bucket"
     storage_class      = "STANDARD"
     versioning_enabled = true
     force_destroy      = false
@@ -73,76 +74,52 @@ buckets = {
 
 secrets = {
   supervisor = {
-    secret_id        = "via-supervisor-dso-secret"
+    secret_id        = "via-supervisor-dev-secret"
     accessor_sa_keys = ["supervisor"]
   }
   supervisor_session = {
-    secret_id        = "via-supervisor-session-dso-secret"
+    secret_id        = "via-supervisor-dev-session"
     accessor_sa_keys = ["supervisor"]
   }
   supervisor_memory = {
-    secret_id        = "via-supervisor-memory-service-dso-secret"
+    secret_id        = "via-supervisor-dev-memory"
     accessor_sa_keys = ["supervisor"]
   }
   superagent = {
-    secret_id        = "via-superagent-dso-secret"
+    secret_id        = "via-superagent-dev-secret"
     accessor_sa_keys = ["superagent"]
   }
   superagent_session = {
-    secret_id        = "via-superagent-session-dso-secret"
+    secret_id        = "via-superagent-dev-session"
     accessor_sa_keys = ["superagent"]
   }
   cognito_m2m = {
-    secret_id        = "via-cognito-m2m-dso"
+    secret_id        = "via-supervisor-dev-cognito"
     accessor_sa_keys = ["supervisor", "superagent"]
   }
 }
 
+# Only the Cloud SQL instance that already exists in GCP.
+# Creating additional -dso instances made terraform plan hang.
 sql_instances = {
   supervisor_sessions = {
-    name                = "via-supervisor-sql-dso"
+    name                = "via-supervisor-devsecops-east4"
     database_version    = "POSTGRES_18"
-    tier                = "db-custom-2-4096"
+    tier                = "db-custom-1-3840"
     disk_size_gb        = 10
     databases           = ["ff-freya-supervisor-pac-adk", "ff-freya-supervisor-pac-langgraph"]
     iam_authentication  = true
     pitr_enabled        = true
     query_insights      = true
-    deletion_protection = true
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    deletion_protection = false
+    ssl_mode            = "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"
     kms_key_name        = null
-  }
-  superagent_sessions = {
-    name                = "via-superagent-sql-dso"
-    database_version    = "POSTGRES_18"
-    tier                = "db-custom-2-4096"
-    disk_size_gb        = 10
-    databases           = ["ff-freya-sa-pac-langgraph"]
-    iam_authentication  = true
-    pitr_enabled        = true
-    query_insights      = true
-    deletion_protection = true
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    kms_key_name        = null
-  }
-  supervisor_memory = {
-    name                = "via-supervisor-memory-sql-dso"
-    database_version    = "POSTGRES_18"
-    tier                = "db-custom-2-8192"
-    disk_size_gb        = 100
-    databases           = ["mem0_db"]
-    iam_authentication  = true
-    pitr_enabled        = true
-    query_insights      = true
-    deletion_protection = true
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    kms_key_name        = "projects/freyr-ai/locations/us-east4/keyRings/via-dso/cryptoKeys/cloud-sql"
   }
 }
 
 cloud_run_services = {
   supervisor = {
-    name    = "via-supervisor-dso"
+    name    = "via-supervisor-dev-run"
     image   = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
     sa_key  = "supervisor"
     port    = 8080
@@ -153,9 +130,9 @@ cloud_run_services = {
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      SESSION_SERVICE_SECRET_NAME = "via-supervisor-session-dso-secret"
-      MEMORY_SERVICE_SECRET_NAME  = "via-supervisor-memory-service-dso-secret"
-      GCS_CONFIG_BUCKET           = "via-supervisor-config-dso"
+      SESSION_SERVICE_SECRET_NAME = "via-supervisor-dev-session"
+      MEMORY_SERVICE_SECRET_NAME  = "via-supervisor-dev-memory"
+      GCS_CONFIG_BUCKET           = "via-supervisor-dev-bucket"
       GCS_CONFIG_OBJECT           = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
     }
     secret_env_keys = {
@@ -171,7 +148,7 @@ cloud_run_services = {
     deletion_protection   = true
   }
   superagent = {
-    name    = "via-superagent-dso"
+    name    = "via-superagent-dev-run"
     image   = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
     sa_key  = "superagent"
     port    = 8080
@@ -182,8 +159,8 @@ cloud_run_services = {
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      SESSION_SERVICE_SECRET_NAME = "via-superagent-session-dso-secret"
-      GCS_CONFIG_BUCKET           = "via-superagent-config-dso"
+      SESSION_SERVICE_SECRET_NAME = "via-superagent-dev-session"
+      GCS_CONFIG_BUCKET           = "via-superagent-dev-bucket"
       GCS_CONFIG_OBJECT           = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
     }
     secret_env_keys = {
