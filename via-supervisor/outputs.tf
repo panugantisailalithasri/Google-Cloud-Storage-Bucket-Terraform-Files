@@ -1,11 +1,22 @@
 output "product_name" {
-  description = "Product name used for this stack."
+  description = "Product name used as the first segment of resource names."
   value       = var.product_name
 }
 
 output "environment" {
-  description = "Environment used for this stack."
+  description = "Environment name used as the second segment of resource names."
   value       = var.environment
+}
+
+output "resource_names" {
+  description = "Composed GCP names (productname-ENVname-Resourcename) keyed by stack handle."
+  value = {
+    service_accounts = local.service_account_names
+    buckets          = local.bucket_names
+    secrets          = local.secret_names
+    sql              = local.sql_names
+    cloud_run        = local.cloud_run_names
+  }
 }
 
 output "service_account_emails" {
@@ -20,7 +31,7 @@ output "bucket_names" {
 
 output "secret_ids" {
   description = "Secret Manager IDs keyed by handle."
-  value       = { for key, secret in var.secrets : key => secret.secret_id }
+  value       = local.secret_names
 }
 
 output "sql_connection_names" {

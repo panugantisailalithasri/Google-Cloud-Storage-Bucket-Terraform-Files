@@ -2,7 +2,7 @@
 
 Reusable **modules** for Cloud Storage, IAM, Secret Manager, Cloud Run, and Cloud SQL. Each **agent / microservice** has its own folder (starting with `via-supervisor`). Environment values live under that folder in `environments/`. Each agent has a **dedicated Terraform state bucket**.
 
-**via-supervisor** deploys the DSO footprint in `freyr-ai` / `us-east4`: two Cloud Run services, two config buckets, six secrets, three Cloud SQL instances, on VPC `freya-ai-dev-vpc`. All values come from `environments/*.tfvars`.
+**via-supervisor** deploys the same stack to **DevSecOps** and **Production** in `freyr-ai` / `us-east4`. Only `environments/dev.tfvars` vs `environments/prod.tfvars` (and the pipeline `environment` parameter) change. Terraform composes every GCP name from product, env, and resource suffix.
 
 ## Layout
 
@@ -14,26 +14,58 @@ modules/                         Reusable GCP templates (do not run Terraform he
   cloud-run/
   cloud-sql/
 
-via-supervisor/                  DSO stack for VIA supervisor + superagent
+via-supervisor/                  Stack for VIA supervisor + superagent
+  naming.tf                      Composes productname-ENVname-Resourcename
   remote-backend/                Creates gs://via-supervisor-tfstate (run once)
   environments/
-    dev.tfvars.example           DSO/dev values
-    prod.tfvars.example          DSO/prod values
+    dev.tfvars.example           DevSecOps values (environment = devsecops)
+    prod.tfvars.example          Production values (environment = prod)
   main.tf                        Calls the modules
 ```
 
-## DSO resources (from tfvars)
+## Naming convention
 
-| Kind | Names |
+Every GCP resource name is built in `via-supervisor/naming.tf`:
+
+```text
+productname-ENVname-Resourcename
+```
+
+| Segment | Source |
 | --- | --- |
-| Cloud Run | `via-supervisor-dso`, `via-superagent-dso` |
-| Service accounts | `via-supervisor-dso-sa`, `via-superagent-dso-sa` |
-| GCS | `via-supervisor-config-dso`, `via-superagent-config-dso` |
-| Secrets | `via-supervisor-dso-secret`, `via-supervisor-session-dso-secret`, `via-supervisor-memory-service-dso-secret`, `via-superagent-dso-secret`, `via-superagent-session-dso-secret`, `via-cognito-m2m-dso` |
-| Cloud SQL | `via-supervisor-sql-dso`, `via-superagent-sql-dso`, `via-supervisor-memory-sql-dso` |
+| productname | `var.product_name` (tfvars, overridden by pipeline `productName`) or a per-resource `product_name` (used for `via-superagent`) |
+| ENVname | `var.environment` from the env tfvars (`devsecops` or `prod`) |
+| Resourcename | per-resource `resource_name` (`sa`, `bucket`, `run`, `sql`, `secret`, …) |
+
+Names are lowercased. tfvars hold **suffixes and settings only** — not full strings like `via-supervisor-dev-sa`.
+
+DevSecOps examples (`product_name = via-supervisor`, `environment = devsecops`):
+
+| Handle | Composed name |
+| --- | --- |
+| Supervisor SA | `via-supervisor-devsecops-sa` |
+| Superagent SA | `via-superagent-devsecops-sa` |
+| Supervisor bucket | `via-supervisor-devsecops-bucket` |
+| Superagent bucket | `via-superagent-devsecops-bucket` |
+| Supervisor Cloud Run | `via-supervisor-devsecops-run` |
+| Superagent Cloud Run | `via-superagent-devsecops-run` |
+| Cloud SQL (existing) | `via-supervisor-devsecops-east4` |
+
+Production uses the same suffixes with `environment = prod` (`via-supervisor-prod-bucket`, `via-supervisor-prod-sql`, …).
+
+The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State isolation is the backend prefix (`dev` / `prod`).
+
+## DSO resources (settings from tfvars)
+
+| Kind | What Terraform creates |
+| --- | --- |
+| Cloud Run | Supervisor (public invoke; Cognito in-app) and superagent (invoker = supervisor SA) |
+| GCS | One config bucket per product |
+| Secrets | Supervisor/superagent secret, session, memory, cognito |
+| Cloud SQL | DevSecOps: existing `via-supervisor-devsecops-east4` only. Production: supervisor, superagent, and memory instances |
 | VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
 
-Supervisor Cloud Run allows `allUsers` invoke because Cognito OAuth is enforced in the app. Superagent invoke is limited to the supervisor service account. GCS JSON config objects are not uploaded by Terraform.
+GCS JSON config objects are not uploaded by Terraform. Cloud Run env vars for bucket and secret **names** are injected from the composed names.
 
 A new agent is a copy of `via-supervisor/` renamed to the product name. That copy gets its own state bucket (`<product_name>-tfstate`).
 
@@ -60,22 +92,7 @@ cp backend.hcl.example backend.hcl   # bucket = via-supervisor-tfstate, prefix =
 terraform init -backend-config=backend.hcl
 ```
 
-ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically. Pipeline variables also record DSO project `freyr-ai`, region `us-east4`, VPC `freya-ai-dev-vpc`, and subnet `freya-ai-dev-subnet-us-east4`.
-
-## Naming convention
-
-```text
-<product_name>-<environment>-<resource>
-```
-
-DSO names are set explicitly in tfvars (not derived as `<product>-<env>-<resource>`):
-
-| Resource | Name |
-| --- | --- |
-| Supervisor Cloud Run | `via-supervisor-dso` |
-| Superagent Cloud Run | `via-superagent-dso` |
-| Config buckets | `via-supervisor-config-dso`, `via-superagent-config-dso` |
-| Remote backend | `via-supervisor-tfstate` (prefix `dev` or `prod`) |
+ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically, and passes `-var=product_name=$(productName)` so names follow the pipeline product. Pipeline variables also record DSO project `freyr-ai`, region `us-east4`, VPC `freya-ai-dev-vpc`, and subnet `freya-ai-dev-subnet-us-east4`.
 
 ## Security defaults
 
@@ -110,12 +127,14 @@ cd ..
 cp backend.hcl.example backend.hcl
 terraform init -backend-config=backend.hcl
 
+# DevSecOps
 terraform plan -var-file=environments/dev.tfvars.example
 
-terraform apply -var-file=environments/dev.tfvars.example
+# Production
+terraform plan -var-file=environments/prod.tfvars.example
 ```
 
-All stack inputs come from `environments/<env>.tfvars` (see `variables.tf`). Do not rely on defaults in `variables.tf`.
+All stack inputs come from `environments/<env>.tfvars` (see `variables.tf`). Do not rely on defaults in `variables.tf`. Resource **names** are derived in `naming.tf`, not copied from tfvars.
 
 ## Azure DevOps
 
@@ -126,8 +145,8 @@ The pipeline uses the ARM service connection `GCP_freyrai_service_role` to mint 
 3. Create ADO environments `gcp-dev` and `gcp-prod` (approval on prod).
 4. Create the agent state bucket (`<productName>-tfstate`) once via `remote-backend/` before the first plan.
 5. Run with:
-   - `productName`: agent folder (`via-supervisor`) → bucket `via-supervisor-tfstate`
-   - `environment`: `dev` or `prod` → state prefix
+   - `productName`: agent folder (`via-supervisor`) → state bucket `via-supervisor-tfstate` and first name segment
+   - `environment`: `dev` (DevSecOps tfvars) or `prod` (Production tfvars) → state prefix
    - `action`: `plan` or `apply`
 
 ## Checkov
@@ -139,9 +158,9 @@ The pipeline uses the ARM service connection `GCP_freyrai_service_role` to mint 
 ## Adding another agent
 
 1. Copy `via-supervisor/` to `<new-agent>/`.
-2. Edit `<new-agent>/environments/*.tfvars.example` (including `product_name`) and `<new-agent>/remote-backend/terraform.tfvars.example`.
+2. Edit `<new-agent>/environments/*.tfvars.example` (`product_name` and any peer `product_name` overrides) and `<new-agent>/remote-backend/terraform.tfvars.example`.
 3. Edit `<new-agent>/backend.hcl.example` (`bucket = "<new-agent>-tfstate"`).
 4. Apply `<new-agent>/remote-backend` once to create `gs://<new-agent>-tfstate`.
-5. Run the pipeline with `productName=<new-agent>`.
+5. Run the pipeline with `productName=<new-agent>`. Names become `<new-agent>-<env>-<resource>`.
 
 Leave `modules/` unchanged.

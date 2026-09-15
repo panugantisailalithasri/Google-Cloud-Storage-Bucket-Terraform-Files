@@ -1,6 +1,12 @@
-# via-supervisor / DSO (prod pipeline)
-# Source of truth for every variable in ../variables.tf
-# GCP DSO inventory: project freyr-ai, region us-east4.
+# via-supervisor / Production
+# Same stack as DevSecOps. Only this file (and pipeline environment=prod) changes.
+#
+# GCP names are composed as productname-ENVname-Resourcename:
+#   via-supervisor-prod-sa
+#   via-supervisor-prod-bucket
+#   via-supervisor-prod-run
+#   via-supervisor-prod-sql
+#   via-superagent-prod-sa            (product_name override)
 
 product_name = "via-supervisor"
 environment  = "prod"
@@ -21,9 +27,9 @@ vpc_egress  = "PRIVATE_RANGES_ONLY"
 
 service_accounts = {
   supervisor = {
-    account_id   = "via-supervisor-dso-sa"
-    display_name = "VIA supervisor DSO"
-    description  = "Runtime identity for via-supervisor-dso"
+    resource_name = "sa"
+    display_name  = "VIA supervisor"
+    description   = "Runtime identity for the supervisor Cloud Run service"
     project_roles = [
       "roles/logging.logWriter",
       "roles/monitoring.metricWriter",
@@ -33,9 +39,10 @@ service_accounts = {
     ]
   }
   superagent = {
-    account_id   = "via-superagent-dso-sa"
-    display_name = "VIA superagent DSO"
-    description  = "Runtime identity for via-superagent-dso"
+    product_name  = "via-superagent"
+    resource_name = "sa"
+    display_name  = "VIA superagent"
+    description   = "Runtime identity for the superagent Cloud Run service"
     project_roles = [
       "roles/logging.logWriter",
       "roles/monitoring.metricWriter",
@@ -47,8 +54,8 @@ service_accounts = {
 }
 
 buckets = {
-  supervisor_config = {
-    name               = "via-supervisor-config-dso"
+  supervisor = {
+    resource_name      = "bucket"
     storage_class      = "STANDARD"
     versioning_enabled = true
     force_destroy      = false
@@ -58,8 +65,9 @@ buckets = {
     accessor_sa_keys   = ["supervisor"]
     extra_iam_members  = []
   }
-  superagent_config = {
-    name               = "via-superagent-config-dso"
+  superagent = {
+    product_name       = "via-superagent"
+    resource_name      = "bucket"
     storage_class      = "STANDARD"
     versioning_enabled = true
     force_destroy      = false
@@ -73,34 +81,36 @@ buckets = {
 
 secrets = {
   supervisor = {
-    secret_id        = "via-supervisor-dso-secret"
+    resource_name    = "secret"
     accessor_sa_keys = ["supervisor"]
   }
   supervisor_session = {
-    secret_id        = "via-supervisor-session-dso-secret"
+    resource_name    = "session"
     accessor_sa_keys = ["supervisor"]
   }
   supervisor_memory = {
-    secret_id        = "via-supervisor-memory-service-dso-secret"
+    resource_name    = "memory"
     accessor_sa_keys = ["supervisor"]
   }
   superagent = {
-    secret_id        = "via-superagent-dso-secret"
+    product_name     = "via-superagent"
+    resource_name    = "secret"
     accessor_sa_keys = ["superagent"]
   }
   superagent_session = {
-    secret_id        = "via-superagent-session-dso-secret"
+    product_name     = "via-superagent"
+    resource_name    = "session"
     accessor_sa_keys = ["superagent"]
   }
-  cognito_m2m = {
-    secret_id        = "via-cognito-m2m-dso"
+  cognito = {
+    resource_name    = "cognito"
     accessor_sa_keys = ["supervisor", "superagent"]
   }
 }
 
 sql_instances = {
-  supervisor_sessions = {
-    name                = "via-supervisor-sql-dso"
+  sql = {
+    resource_name       = "sql"
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-4096"
     disk_size_gb        = 10
@@ -112,8 +122,9 @@ sql_instances = {
     ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
     kms_key_name        = null
   }
-  superagent_sessions = {
-    name                = "via-superagent-sql-dso"
+  superagent_sql = {
+    product_name        = "via-superagent"
+    resource_name       = "sql"
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-4096"
     disk_size_gb        = 10
@@ -125,8 +136,8 @@ sql_instances = {
     ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
     kms_key_name        = null
   }
-  supervisor_memory = {
-    name                = "via-supervisor-memory-sql-dso"
+  memory_sql = {
+    resource_name       = "memory-sql"
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-8192"
     disk_size_gb        = 100
@@ -142,27 +153,27 @@ sql_instances = {
 
 cloud_run_services = {
   supervisor = {
-    name    = "via-supervisor-dso"
-    image   = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
-    sa_key  = "supervisor"
-    port    = 8080
-    cpu     = "2"
-    memory  = "4Gi"
+    resource_name      = "run"
+    image              = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
+    sa_key             = "supervisor"
+    config_bucket_key  = "supervisor"
+    session_secret_key = "supervisor_session"
+    memory_secret_key  = "supervisor_memory"
+    port               = 8080
+    cpu                = "2"
+    memory             = "4Gi"
     min_instances         = 1
     max_instances         = 3
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      SESSION_SERVICE_SECRET_NAME = "via-supervisor-session-dso-secret"
-      MEMORY_SERVICE_SECRET_NAME  = "via-supervisor-memory-service-dso-secret"
-      GCS_CONFIG_BUCKET           = "via-supervisor-config-dso"
-      GCS_CONFIG_OBJECT           = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
+      GCS_CONFIG_OBJECT = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
     }
     secret_env_keys = {
       VIA_SUPERVISOR_SECRET = "supervisor"
       VIA_SESSION_SECRET    = "supervisor_session"
       VIA_MEMORY_SECRET     = "supervisor_memory"
-      VIA_COGNITO_M2M       = "cognito_m2m"
+      VIA_COGNITO_M2M       = "cognito"
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
@@ -171,25 +182,26 @@ cloud_run_services = {
     deletion_protection   = true
   }
   superagent = {
-    name    = "via-superagent-dso"
-    image   = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
-    sa_key  = "superagent"
-    port    = 8080
-    cpu     = "2"
-    memory  = "4Gi"
+    product_name       = "via-superagent"
+    resource_name      = "run"
+    image              = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
+    sa_key             = "superagent"
+    config_bucket_key  = "superagent"
+    session_secret_key = "superagent_session"
+    port               = 8080
+    cpu                = "2"
+    memory             = "4Gi"
     min_instances         = 1
     max_instances         = 3
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      SESSION_SERVICE_SECRET_NAME = "via-superagent-session-dso-secret"
-      GCS_CONFIG_BUCKET           = "via-superagent-config-dso"
-      GCS_CONFIG_OBJECT           = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
+      GCS_CONFIG_OBJECT = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
     }
     secret_env_keys = {
       VIA_SUPERAGENT_SECRET = "superagent"
       VIA_SESSION_SECRET    = "superagent_session"
-      VIA_COGNITO_M2M       = "cognito_m2m"
+      VIA_COGNITO_M2M       = "cognito"
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false

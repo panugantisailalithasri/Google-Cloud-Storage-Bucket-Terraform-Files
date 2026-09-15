@@ -1,5 +1,6 @@
-# via-supervisor DSO stack.
+# via-supervisor stack for DevSecOps and Production.
 # Calls reusable templates in ../modules. Env values: environments/<env>.tfvars
+# GCP names are composed in naming.tf as productname-ENVname-Resourcename.
 
 locals {
   location = var.location
@@ -49,7 +50,7 @@ module "service_accounts" {
   for_each = var.service_accounts
 
   project_id    = var.project_id
-  account_id    = each.value.account_id
+  account_id    = local.service_account_names[each.key]
   display_name  = each.value.display_name
   description   = each.value.description
   project_roles = each.value.project_roles
@@ -63,7 +64,7 @@ module "secrets" {
   project_id = var.project_id
   labels     = local.labels
   secrets = {
-    for key, secret in var.secrets : secret.secret_id => {
+    for key, secret in var.secrets : local.secret_names[key] => {
       accessors = [
         for sa_key in secret.accessor_sa_keys : module.service_accounts[sa_key].member
       ]
@@ -78,7 +79,7 @@ module "buckets" {
   for_each = var.buckets
 
   project_id         = var.project_id
-  name               = each.value.name
+  name               = local.bucket_names[each.key]
   location           = local.location
   storage_class      = each.value.storage_class
   force_destroy      = each.value.force_destroy
@@ -105,7 +106,7 @@ module "sql" {
   for_each = var.sql_instances
 
   project_id          = var.project_id
-  name                = each.value.name
+  name                = local.sql_names[each.key]
   region              = var.region
   database_version    = each.value.database_version
   tier                = each.value.tier
@@ -128,7 +129,7 @@ module "cloud_run" {
   for_each = var.cloud_run_services
 
   project_id            = var.project_id
-  name                  = each.value.name
+  name                  = local.cloud_run_names[each.key]
   location              = var.region
   image                 = each.value.image
   service_account_email = module.service_accounts[each.value.sa_key].email
@@ -142,21 +143,34 @@ module "cloud_run" {
   vpc_network           = local.vpc_network_uri
   vpc_subnet            = local.vpc_subnet_uri
   vpc_egress            = var.vpc_egress
-  env_vars = merge(each.value.env_vars, {
-    PRODUCT_NAME                = var.product_name
-    ENVIRONMENT                 = var.environment
-    GEMINI_ENTERPRISE_APP_ID    = var.gemini_enterprise.application_id
-    VIA_AGENT_ID                = var.gemini_enterprise.via_agent_id
-    VIA_AGENT_DISPLAY_NAME      = var.gemini_enterprise.agent_display_name
-    VIA_TRACING_ENABLED         = tostring(var.observability.via_tracing_enabled)
-    PAC_TRACING_ENABLED         = tostring(var.observability.pac_tracing_enabled)
-    OTEL_EXPORTER_OTLP_ENDPOINT = var.observability.traces_endpoint
-    REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
-    CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
-  })
+  env_vars = merge(
+    each.value.env_vars,
+    {
+      PRODUCT_NAME                = coalesce(each.value.product_name, var.product_name)
+      ENVIRONMENT                 = var.environment
+      RESOURCE_NAME               = local.cloud_run_names[each.key]
+      GEMINI_ENTERPRISE_APP_ID    = var.gemini_enterprise.application_id
+      VIA_AGENT_ID                = var.gemini_enterprise.via_agent_id
+      VIA_AGENT_DISPLAY_NAME      = var.gemini_enterprise.agent_display_name
+      VIA_TRACING_ENABLED         = tostring(var.observability.via_tracing_enabled)
+      PAC_TRACING_ENABLED         = tostring(var.observability.pac_tracing_enabled)
+      OTEL_EXPORTER_OTLP_ENDPOINT = var.observability.traces_endpoint
+      REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
+      CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
+    },
+    each.value.config_bucket_key == null ? {} : {
+      GCS_CONFIG_BUCKET = local.bucket_names[each.value.config_bucket_key]
+    },
+    each.value.session_secret_key == null ? {} : {
+      SESSION_SERVICE_SECRET_NAME = local.secret_names[each.value.session_secret_key]
+    },
+    each.value.memory_secret_key == null ? {} : {
+      MEMORY_SERVICE_SECRET_NAME = local.secret_names[each.value.memory_secret_key]
+    },
+  )
   secret_env_vars = {
     for env_name, secret_key in each.value.secret_env_keys :
-    env_name => var.secrets[secret_key].secret_id
+    env_name => local.secret_names[secret_key]
   }
   ingress               = each.value.ingress
   allow_unauthenticated = each.value.allow_unauthenticated

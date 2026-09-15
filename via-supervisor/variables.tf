@@ -14,7 +14,7 @@ variable "location" {
 }
 
 variable "product_name" {
-  description = "Product or agent name. Set in environments/*.tfvars."
+  description = "Product or agent name used as the first segment of every resource name. Pipeline productName overrides this."
   type        = string
 
   validation {
@@ -24,12 +24,12 @@ variable "product_name" {
 }
 
 variable "environment" {
-  description = "Deployment environment. Set in environments/*.tfvars."
+  description = "Environment name used as the second segment of every resource name (productname-ENVname-Resourcename)."
   type        = string
 
   validation {
-    condition     = contains(["dev", "prod", "dso"], var.environment)
-    error_message = "environment must be dev, prod, or dso."
+    condition     = contains(["dev", "prod", "dso", "devsecops", "production"], var.environment)
+    error_message = "environment must be dev, prod, dso, devsecops, or production."
   }
 }
 
@@ -59,25 +59,21 @@ variable "vpc_egress" {
 }
 
 variable "service_accounts" {
-  description = "Map of service accounts to create. Key is a local handle used by buckets, secrets, and Cloud Run."
+  description = "Map of service accounts. GCP account_id is composed as product-env-resource (see naming.tf). Key is a local handle."
   type = map(object({
-    account_id    = string
+    product_name  = optional(string)
+    resource_name = optional(string)
     display_name  = string
     description   = string
     project_roles = list(string)
   }))
 }
 
-variable "existing_runtime_service_account_email" {
-  description = "Optional existing service account email to reuse instead of creating a new runtime service account."
-  type        = string
-  default     = null
-}
-
 variable "buckets" {
-  description = "GCS buckets. Set name to the full bucket name. accessor_sa_keys references service_accounts keys."
+  description = "GCS buckets. Name is composed as product-env-resource. accessor_sa_keys references service_accounts keys."
   type = map(object({
-    name               = string
+    product_name       = optional(string)
+    resource_name      = optional(string)
     storage_class      = string
     versioning_enabled = bool
     force_destroy      = bool
@@ -93,17 +89,19 @@ variable "buckets" {
 }
 
 variable "secrets" {
-  description = "Secret Manager secrets. secret_id is the full secret name. accessor_sa_keys references service_accounts keys."
+  description = "Secret Manager secrets. secret_id is composed as product-env-resource. accessor_sa_keys references service_accounts keys."
   type = map(object({
-    secret_id        = string
+    product_name     = optional(string)
+    resource_name    = optional(string)
     accessor_sa_keys = list(string)
   }))
 }
 
 variable "sql_instances" {
-  description = "Cloud SQL instances keyed by a local handle."
+  description = "Cloud SQL instances. Instance name is composed as product-env-resource."
   type = map(object({
-    name                = string
+    product_name        = optional(string)
+    resource_name       = optional(string)
     database_version    = string
     tier                = string
     disk_size_gb        = number
@@ -118,9 +116,10 @@ variable "sql_instances" {
 }
 
 variable "cloud_run_services" {
-  description = "Cloud Run services keyed by a local handle. sa_key references service_accounts."
+  description = "Cloud Run services. Service name is composed as product-env-resource. sa_key references service_accounts."
   type = map(object({
-    name                  = string
+    product_name          = optional(string)
+    resource_name         = optional(string)
     image                 = string
     sa_key                = string
     port                  = number
@@ -132,6 +131,9 @@ variable "cloud_run_services" {
     timeout_seconds       = number
     env_vars              = map(string)
     secret_env_keys       = map(string)
+    config_bucket_key     = optional(string)
+    session_secret_key    = optional(string)
+    memory_secret_key     = optional(string)
     ingress               = string
     allow_unauthenticated = bool
     invoker_sa_keys       = list(string)
@@ -164,32 +166,4 @@ variable "pac_external" {
     regulatory_mcp = string
     concept_graph  = string
   })
-}
-
-variable "cloudsql" {
-  description = "Cloud SQL settings. Set null in environments/*.tfvars to skip Cloud SQL."
-  type = object({
-    name                                          = string
-    region                                        = string
-    database_version                              = string
-    edition                                       = string
-    tier                                          = string
-    availability_type                             = string
-    disk_type                                     = string
-    disk_size                                     = number
-    disk_autoresize                               = bool
-    ipv4_enabled                                  = bool
-    ssl_mode                                      = string
-    enable_private_path_for_google_cloud_services = bool
-    authorized_networks                           = list(string)
-    backup_enabled                                = bool
-    point_in_time_recovery_enabled                = bool
-    database_flags = list(object({
-      name  = string
-      value = string
-    }))
-    deletion_protection         = bool
-    deletion_protection_enabled = bool
-  })
-  nullable = true
 }
