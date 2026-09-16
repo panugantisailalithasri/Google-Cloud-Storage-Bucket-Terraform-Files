@@ -67,6 +67,18 @@ variable "pitr_enabled" {
   default     = true
 }
 
+variable "transaction_log_retention_days" {
+  description = "Days of transaction logs kept for PITR (1-7). Must be less than retained_backups."
+  type        = number
+  default     = 7
+}
+
+variable "retained_backups" {
+  description = "Number of automated backups to retain. Must be greater than transaction_log_retention_days."
+  type        = number
+  default     = 14
+}
+
 variable "query_insights" {
   description = "Enable Query Insights."
   type        = bool
