@@ -94,6 +94,7 @@ variable "sql_instances" {
   type = map(object({
     product_name        = optional(string)
     resource_name       = optional(string)
+    edition             = optional(string, "ENTERPRISE")
     database_version    = string
     tier                = string
     disk_size_gb        = number

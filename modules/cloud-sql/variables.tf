@@ -18,8 +18,19 @@ variable "database_version" {
   type        = string
 }
 
+variable "edition" {
+  description = "Cloud SQL edition: ENTERPRISE or ENTERPRISE_PLUS."
+  type        = string
+  default     = "ENTERPRISE"
+
+  validation {
+    condition     = contains(["ENTERPRISE", "ENTERPRISE_PLUS"], var.edition)
+    error_message = "edition must be ENTERPRISE or ENTERPRISE_PLUS."
+  }
+}
+
 variable "tier" {
-  description = "Machine tier, for example db-custom-2-4096."
+  description = "Machine tier. Use db-custom-N-MB for ENTERPRISE; db-perf-optimized-N-* for ENTERPRISE_PLUS."
   type        = string
 }
 

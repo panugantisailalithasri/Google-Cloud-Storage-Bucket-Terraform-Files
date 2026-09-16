@@ -87,6 +87,14 @@ module "buckets" {
   depends_on = [google_project_service.required]
 }
 
+# Import the pre-existing Cloud SQL instance so Terraform manages it without
+# trying to create it again. Once the instance is in state this block is a no-op.
+import {
+  for_each = var.sql_instances
+  to       = module.sql[each.key].google_sql_database_instance.this
+  id       = "projects/${var.project_id}/instances/${local.sql_names[each.key]}"
+}
+
 module "sql" {
   source   = "../modules/cloud-sql"
   for_each = var.sql_instances
@@ -94,6 +102,7 @@ module "sql" {
   project_id          = var.project_id
   name                = local.sql_names[each.key]
   region              = var.region
+  edition             = each.value.edition
   database_version    = each.value.database_version
   tier                = each.value.tier
   disk_size_gb        = each.value.disk_size_gb

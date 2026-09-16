@@ -94,6 +94,7 @@ module "sql" {
   project_id          = var.project_id
   name                = local.sql_names[each.key]
   region              = var.region
+  edition             = each.value.edition
   database_version    = each.value.database_version
   tier                = each.value.tier
   disk_size_gb        = each.value.disk_size_gb
