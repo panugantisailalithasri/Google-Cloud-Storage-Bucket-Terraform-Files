@@ -1,14 +1,11 @@
 # via-supervisor / DevSecOps
-# Source of truth for every variable in ../variables.tf
+# Manages supervisor-only resources. Superagent lives in ../via-superagent/.
 #
-# GCP names are composed as productname-ENVname-Resourcename:
+# GCP names composed as productname-ENVname-Resourcename:
 #   via-supervisor-devsecops-bucket
 #   via-supervisor-devsecops-run
-#   via-supervisor-devsecops-east4   (existing Cloud SQL)
-#   via-superagent-devsecops-bucket  (product_name override)
-#
-# No service accounts are created. Cloud Run runtime identity =
-#   runtime_service_account_email (the existing ADO deployer SA).
+#   via-supervisor-devsecops-east4   (existing Cloud SQL — sessions/checkpoints)
+#   via-supervisor-devsecops-cognito (shared cognito secret, read by superagent too)
 
 product_name = "via-supervisor"
 environment  = "devsecops"
@@ -40,17 +37,6 @@ buckets = {
     runtime_role       = "roles/storage.objectViewer"
     extra_iam_members  = []
   }
-  superagent = {
-    product_name       = "via-superagent"
-    resource_name      = "bucket"
-    storage_class      = "STANDARD"
-    versioning_enabled = true
-    force_destroy      = false
-    lifecycle_age_days = 90
-    kms_key_name       = null
-    runtime_role       = "roles/storage.objectViewer"
-    extra_iam_members  = []
-  }
 }
 
 secrets = {
@@ -63,21 +49,13 @@ secrets = {
   supervisor_memory = {
     resource_name = "memory"
   }
-  superagent = {
-    product_name  = "via-superagent"
-    resource_name = "secret"
-  }
-  superagent_session = {
-    product_name  = "via-superagent"
-    resource_name = "session"
-  }
+  # Cognito M2M is owned here; via-superagent references it via extra_secret_env_vars.
   cognito = {
     resource_name = "cognito"
   }
 }
 
-# Existing Cloud SQL instance in GCP: via-supervisor-devsecops-east4
-# Do not add extra SQL instances; creating new Cloud SQL can hang during plan.
+# Existing Cloud SQL instance. Do not add extra SQL instances to avoid long plan hangs.
 sql_instances = {
   east4 = {
     resource_name       = "east4"
@@ -119,32 +97,6 @@ cloud_run_services = {
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
-    extra_invoker_members = []
-    deletion_protection   = true
-  }
-  superagent = {
-    product_name       = "via-superagent"
-    resource_name      = "run"
-    image              = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
-    config_bucket_key  = "superagent"
-    session_secret_key = "superagent_session"
-    port               = 8080
-    cpu                = "2"
-    memory             = "4Gi"
-    min_instances         = 1
-    max_instances         = 3
-    concurrency           = 320
-    timeout_seconds       = 300
-    env_vars = {
-      GCS_CONFIG_OBJECT = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
-    }
-    secret_env_keys = {
-      VIA_SUPERAGENT_SECRET = "superagent"
-      VIA_SESSION_SECRET    = "superagent_session"
-      VIA_COGNITO_M2M       = "cognito"
-    }
-    ingress               = "INGRESS_TRAFFIC_ALL"
-    allow_unauthenticated = false
     extra_invoker_members = []
     deletion_protection   = true
   }

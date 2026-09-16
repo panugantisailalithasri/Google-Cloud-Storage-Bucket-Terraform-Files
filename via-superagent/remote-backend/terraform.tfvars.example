@@ -1,0 +1,8 @@
+# Source of truth for remote-backend/variables.tf
+#   terraform apply -var-file=terraform.tfvars.example
+#
+# Creates gs://via-superagent-tfstate (this agent's dedicated remote backend).
+
+product_name = "via-superagent"
+project_id   = "freyr-ai"
+region       = "us-east4"

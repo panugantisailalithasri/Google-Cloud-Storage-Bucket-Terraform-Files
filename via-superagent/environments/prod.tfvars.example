@@ -1,14 +1,12 @@
-# via-supervisor / Production
-# Manages supervisor-only resources. Superagent lives in ../via-superagent/.
+# via-superagent / Production
+# Manages superagent-only resources. Supervisor lives in ../via-supervisor/.
 #
 # GCP names composed as productname-ENVname-Resourcename:
-#   via-supervisor-prod-bucket
-#   via-supervisor-prod-run
-#   via-supervisor-prod-sql         (sessions + checkpoints)
-#   via-supervisor-prod-memory-sql  (pgvector)
-#   via-supervisor-prod-cognito     (shared cognito secret)
+#   via-superagent-prod-bucket
+#   via-superagent-prod-run
+#   via-superagent-prod-sql
 
-product_name = "via-supervisor"
+product_name = "via-superagent"
 environment  = "prod"
 project_id   = "freyr-ai"
 region       = "us-east4"
@@ -28,7 +26,7 @@ vpc_subnet  = "freya-ai-dev-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
 
 buckets = {
-  supervisor = {
+  superagent = {
     resource_name      = "bucket"
     storage_class      = "STANDARD"
     versioning_enabled = true
@@ -41,17 +39,11 @@ buckets = {
 }
 
 secrets = {
-  supervisor = {
+  superagent = {
     resource_name = "secret"
   }
-  supervisor_session = {
+  superagent_session = {
     resource_name = "session"
-  }
-  supervisor_memory = {
-    resource_name = "memory"
-  }
-  cognito = {
-    resource_name = "cognito"
   }
 }
 
@@ -61,7 +53,7 @@ sql_instances = {
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-4096"
     disk_size_gb        = 10
-    databases           = ["ff-freya-supervisor-pac-adk", "ff-freya-supervisor-pac-langgraph"]
+    databases           = ["ff-freya-sa-pac-langgraph"]
     iam_authentication  = true
     pitr_enabled        = true
     query_insights      = true
@@ -69,28 +61,14 @@ sql_instances = {
     ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
     kms_key_name        = null
   }
-  memory_sql = {
-    resource_name       = "memory-sql"
-    database_version    = "POSTGRES_18"
-    tier                = "db-custom-2-8192"
-    disk_size_gb        = 100
-    databases           = ["mem0_db"]
-    iam_authentication  = true
-    pitr_enabled        = true
-    query_insights      = true
-    deletion_protection = true
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    kms_key_name        = "projects/freyr-ai/locations/us-east4/keyRings/via-dso/cryptoKeys/cloud-sql"
-  }
 }
 
 cloud_run_services = {
-  supervisor = {
+  superagent = {
     resource_name      = "run"
-    image              = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
-    config_bucket_key  = "supervisor"
-    session_secret_key = "supervisor_session"
-    memory_secret_key  = "supervisor_memory"
+    image              = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
+    config_bucket_key  = "superagent"
+    session_secret_key = "superagent_session"
     port               = 8080
     cpu                = "2"
     memory             = "4Gi"
@@ -99,17 +77,18 @@ cloud_run_services = {
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      GCS_CONFIG_OBJECT = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
+      GCS_CONFIG_OBJECT = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
     }
     secret_env_keys = {
-      VIA_SUPERVISOR_SECRET = "supervisor"
-      VIA_SESSION_SECRET    = "supervisor_session"
-      VIA_MEMORY_SECRET     = "supervisor_memory"
-      VIA_COGNITO_M2M       = "cognito"
+      VIA_SUPERAGENT_SECRET = "superagent"
+      VIA_SESSION_SECRET    = "superagent_session"
+    }
+    extra_secret_env_vars = {
+      VIA_COGNITO_M2M = "via-supervisor-prod-cognito"
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
-    allow_unauthenticated = true
-    extra_invoker_members = []
+    allow_unauthenticated = false
+    extra_invoker_members = ["serviceAccount:ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = true
   }
 }
