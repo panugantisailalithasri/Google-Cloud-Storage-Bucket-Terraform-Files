@@ -1,22 +1,22 @@
 # via-supervisor / DevSecOps
 # Source of truth for every variable in ../variables.tf
 #
-# GCP names are NOT listed here. Terraform composes them as:
-#   productname-ENVname-Resourcename
-# from product_name (or per-resource product_name), environment, and resource_name.
-#
-# Examples with this file:
-#   via-supervisor-devsecops-sa
+# GCP names are composed as productname-ENVname-Resourcename:
 #   via-supervisor-devsecops-bucket
 #   via-supervisor-devsecops-run
 #   via-supervisor-devsecops-east4   (existing Cloud SQL)
-#   via-superagent-devsecops-sa      (product_name override)
+#   via-superagent-devsecops-bucket  (product_name override)
+#
+# No service accounts are created. Cloud Run runtime identity =
+#   runtime_service_account_email (the existing ADO deployer SA).
 
 product_name = "via-supervisor"
 environment  = "devsecops"
 project_id   = "freyr-ai"
 region       = "us-east4"
 location     = "us-east4"
+
+runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
 
 labels = {
   team    = "ai-agents"
@@ -29,34 +29,6 @@ vpc_network = "freya-ai-dev-vpc"
 vpc_subnet  = "freya-ai-dev-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
 
-service_accounts = {
-  supervisor = {
-    resource_name = "sa"
-    display_name  = "VIA supervisor"
-    description   = "Runtime identity for the supervisor Cloud Run service"
-    project_roles = [
-      "roles/logging.logWriter",
-      "roles/monitoring.metricWriter",
-      "roles/aiplatform.user",
-      "roles/cloudsql.client",
-      "roles/telemetry.tracesWriter",
-    ]
-  }
-  superagent = {
-    product_name  = "via-superagent"
-    resource_name = "sa"
-    display_name  = "VIA superagent"
-    description   = "Runtime identity for the superagent Cloud Run service"
-    project_roles = [
-      "roles/logging.logWriter",
-      "roles/monitoring.metricWriter",
-      "roles/aiplatform.user",
-      "roles/cloudsql.client",
-      "roles/secretmanager.secretAccessor",
-    ]
-  }
-}
-
 buckets = {
   supervisor = {
     resource_name      = "bucket"
@@ -66,7 +38,6 @@ buckets = {
     lifecycle_age_days = 90
     kms_key_name       = null
     runtime_role       = "roles/storage.objectViewer"
-    accessor_sa_keys   = ["supervisor"]
     extra_iam_members  = []
   }
   superagent = {
@@ -78,43 +49,35 @@ buckets = {
     lifecycle_age_days = 90
     kms_key_name       = null
     runtime_role       = "roles/storage.objectViewer"
-    accessor_sa_keys   = ["superagent"]
     extra_iam_members  = []
   }
 }
 
 secrets = {
   supervisor = {
-    resource_name    = "secret"
-    accessor_sa_keys = ["supervisor"]
+    resource_name = "secret"
   }
   supervisor_session = {
-    resource_name    = "session"
-    accessor_sa_keys = ["supervisor"]
+    resource_name = "session"
   }
   supervisor_memory = {
-    resource_name    = "memory"
-    accessor_sa_keys = ["supervisor"]
+    resource_name = "memory"
   }
   superagent = {
-    product_name     = "via-superagent"
-    resource_name    = "secret"
-    accessor_sa_keys = ["superagent"]
+    product_name  = "via-superagent"
+    resource_name = "secret"
   }
   superagent_session = {
-    product_name     = "via-superagent"
-    resource_name    = "session"
-    accessor_sa_keys = ["superagent"]
+    product_name  = "via-superagent"
+    resource_name = "session"
   }
   cognito = {
-    resource_name    = "cognito"
-    accessor_sa_keys = ["supervisor", "superagent"]
+    resource_name = "cognito"
   }
 }
 
 # Existing Cloud SQL instance in GCP: via-supervisor-devsecops-east4
-# (product=via-supervisor, env=devsecops, resource=east4). Do not add extra SQL
-# instances here; creating new Cloud SQL during plan can hang for a long time.
+# Do not add extra SQL instances; creating new Cloud SQL can hang during plan.
 sql_instances = {
   east4 = {
     resource_name       = "east4"
@@ -135,7 +98,6 @@ cloud_run_services = {
   supervisor = {
     resource_name      = "run"
     image              = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
-    sa_key             = "supervisor"
     config_bucket_key  = "supervisor"
     session_secret_key = "supervisor_session"
     memory_secret_key  = "supervisor_memory"
@@ -157,7 +119,6 @@ cloud_run_services = {
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
-    invoker_sa_keys       = []
     extra_invoker_members = []
     deletion_protection   = true
   }
@@ -165,7 +126,6 @@ cloud_run_services = {
     product_name       = "via-superagent"
     resource_name      = "run"
     image              = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
-    sa_key             = "superagent"
     config_bucket_key  = "superagent"
     session_secret_key = "superagent_session"
     port               = 8080
@@ -185,7 +145,6 @@ cloud_run_services = {
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false
-    invoker_sa_keys       = ["supervisor"]
     extra_invoker_members = []
     deletion_protection   = true
   }

@@ -33,6 +33,11 @@ variable "environment" {
   }
 }
 
+variable "runtime_service_account_email" {
+  description = "Existing GCP service account email used as the Cloud Run runtime identity and granted access to buckets and secrets. No new SA is created."
+  type        = string
+}
+
 variable "labels" {
   description = "Extra labels merged onto every resource. Set in environments/*.tfvars."
   type        = map(string)
@@ -58,19 +63,8 @@ variable "vpc_egress" {
   type        = string
 }
 
-variable "service_accounts" {
-  description = "Map of service accounts. GCP account_id is composed as product-env-resource (see naming.tf). Key is a local handle."
-  type = map(object({
-    product_name  = optional(string)
-    resource_name = optional(string)
-    display_name  = string
-    description   = string
-    project_roles = list(string)
-  }))
-}
-
 variable "buckets" {
-  description = "GCS buckets. Name is composed as product-env-resource. accessor_sa_keys references service_accounts keys."
+  description = "GCS buckets. Name is composed as product-env-resource. runtime_service_account_email is automatically granted runtime_role."
   type = map(object({
     product_name       = optional(string)
     resource_name      = optional(string)
@@ -80,7 +74,6 @@ variable "buckets" {
     lifecycle_age_days = number
     kms_key_name       = optional(string)
     runtime_role       = string
-    accessor_sa_keys   = list(string)
     extra_iam_members = list(object({
       role   = string
       member = string
@@ -89,11 +82,10 @@ variable "buckets" {
 }
 
 variable "secrets" {
-  description = "Secret Manager secrets. secret_id is composed as product-env-resource. accessor_sa_keys references service_accounts keys."
+  description = "Secret Manager secrets. secret_id is composed as product-env-resource. runtime_service_account_email is automatically granted secretAccessor."
   type = map(object({
-    product_name     = optional(string)
-    resource_name    = optional(string)
-    accessor_sa_keys = list(string)
+    product_name  = optional(string)
+    resource_name = optional(string)
   }))
 }
 
@@ -116,12 +108,11 @@ variable "sql_instances" {
 }
 
 variable "cloud_run_services" {
-  description = "Cloud Run services. Service name is composed as product-env-resource. sa_key references service_accounts."
+  description = "Cloud Run services. Service name is composed as product-env-resource. All services share runtime_service_account_email."
   type = map(object({
     product_name          = optional(string)
     resource_name         = optional(string)
     image                 = string
-    sa_key                = string
     port                  = number
     cpu                   = string
     memory                = string
@@ -136,7 +127,6 @@ variable "cloud_run_services" {
     memory_secret_key     = optional(string)
     ingress               = string
     allow_unauthenticated = bool
-    invoker_sa_keys       = list(string)
     extra_invoker_members = list(string)
     deletion_protection   = bool
   }))

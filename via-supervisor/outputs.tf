@@ -8,20 +8,19 @@ output "environment" {
   value       = var.environment
 }
 
+output "runtime_service_account_email" {
+  description = "Existing service account email used as the Cloud Run runtime identity."
+  value       = var.runtime_service_account_email
+}
+
 output "resource_names" {
   description = "Composed GCP names (productname-ENVname-Resourcename) keyed by stack handle."
   value = {
-    service_accounts = local.service_account_names
-    buckets          = local.bucket_names
-    secrets          = local.secret_names
-    sql              = local.sql_names
-    cloud_run        = local.cloud_run_names
+    buckets   = local.bucket_names
+    secrets   = local.secret_names
+    sql       = local.sql_names
+    cloud_run = local.cloud_run_names
   }
-}
-
-output "service_account_emails" {
-  description = "Service account emails keyed by handle."
-  value       = { for key, sa in module.service_accounts : key => sa.email }
 }
 
 output "bucket_names" {

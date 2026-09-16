@@ -1,6 +1,7 @@
 # via-supervisor stack for DevSecOps and Production.
 # Calls reusable templates in ../modules. Env values: environments/<env>.tfvars
 # GCP names are composed in naming.tf as productname-ENVname-Resourcename.
+# Cloud Run runtime identity = var.runtime_service_account_email (existing SA, no SA created here).
 
 locals {
   location = var.location
@@ -45,29 +46,14 @@ resource "google_project_service" "required" {
   disable_on_destroy = false
 }
 
-module "service_accounts" {
-  source   = "../modules/iam"
-  for_each = var.service_accounts
-
-  project_id    = var.project_id
-  account_id    = local.service_account_names[each.key]
-  display_name  = each.value.display_name
-  description   = each.value.description
-  project_roles = each.value.project_roles
-
-  depends_on = [google_project_service.required]
-}
-
 module "secrets" {
   source = "../modules/secret-manager"
 
   project_id = var.project_id
   labels     = local.labels
   secrets = {
-    for key, secret in var.secrets : local.secret_names[key] => {
-      accessors = [
-        for sa_key in secret.accessor_sa_keys : module.service_accounts[sa_key].member
-      ]
+    for key in keys(var.secrets) : local.secret_names[key] => {
+      accessors = [local.runtime_sa_member]
     }
   }
 
@@ -90,9 +76,9 @@ module "buckets" {
 
   iam_members = concat(
     [
-      for sa_key in each.value.accessor_sa_keys : {
+      {
         role   = each.value.runtime_role
-        member = module.service_accounts[sa_key].member
+        member = local.runtime_sa_member
       }
     ],
     each.value.extra_iam_members
@@ -132,7 +118,7 @@ module "cloud_run" {
   name                  = local.cloud_run_names[each.key]
   location              = var.region
   image                 = each.value.image
-  service_account_email = module.service_accounts[each.value.sa_key].email
+  service_account_email = var.runtime_service_account_email
   port                  = each.value.port
   cpu                   = each.value.cpu
   memory                = each.value.memory
@@ -174,12 +160,9 @@ module "cloud_run" {
   }
   ingress               = each.value.ingress
   allow_unauthenticated = each.value.allow_unauthenticated
-  invoker_members = concat(
-    [for sa_key in each.value.invoker_sa_keys : module.service_accounts[sa_key].member],
-    each.value.extra_invoker_members
-  )
-  deletion_protection = each.value.deletion_protection
-  labels              = local.labels
+  invoker_members       = each.value.extra_invoker_members
+  deletion_protection   = each.value.deletion_protection
+  labels                = local.labels
 
   depends_on = [
     google_project_service.required,

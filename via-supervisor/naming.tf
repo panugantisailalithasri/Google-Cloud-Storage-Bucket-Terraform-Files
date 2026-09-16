@@ -1,21 +1,12 @@
 # Resource names are composed here, not stored as full strings in tfvars.
 # Format: productname-ENVname-Resourcename  (lowercased for GCP)
 #
-#   product  = each resource's product_name, or var.product_name (pipeline productName)
+#   product  = each resource's product_name override, or var.product_name
 #   env      = var.environment from environments/<env>.tfvars (devsecops / prod)
 #   resource = each resource's resource_name, or the map key with underscores → hyphens
 
 locals {
   environment_name = lower(var.environment)
-
-  service_account_names = {
-    for key, sa in var.service_accounts :
-    key => lower(format("%s-%s-%s",
-      coalesce(sa.product_name, var.product_name),
-      local.environment_name,
-      coalesce(sa.resource_name, replace(key, "_", "-")),
-    ))
-  }
 
   bucket_names = {
     for key, bucket in var.buckets :
@@ -52,11 +43,6 @@ locals {
       coalesce(svc.resource_name, replace(key, "_", "-")),
     ))
   }
-}
 
-check "service_account_id_length" {
-  assert {
-    condition     = alltrue([for n in values(local.service_account_names) : length(n) >= 6 && length(n) <= 30])
-    error_message = "Composed service account IDs must be 6-30 characters (product-env-resource). Got: ${join(", ", values(local.service_account_names))}"
-  }
+  runtime_sa_member = "serviceAccount:${var.runtime_service_account_email}"
 }
