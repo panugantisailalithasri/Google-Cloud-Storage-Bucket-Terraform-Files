@@ -4,6 +4,10 @@
 #   product  = each resource's product_name override, or var.product_name
 #   env      = var.environment from environments/<env>.tfvars (devsecops / prod)
 #   resource = each resource's resource_name, or the map key with underscores → hyphens
+#
+# sql_instances supports name_override for pre-existing GCP instances whose name
+# cannot be changed (Cloud SQL instances cannot be renamed). Always prefer the
+# standard composition; name_override must be documented in tfvars when used.
 
 locals {
   environment_name = lower(var.environment)
@@ -28,7 +32,7 @@ locals {
 
   sql_names = {
     for key, inst in var.sql_instances :
-    key => lower(format("%s-%s-%s",
+    key => inst.name_override != null ? lower(inst.name_override) : lower(format("%s-%s-%s",
       coalesce(inst.product_name, var.product_name),
       local.environment_name,
       coalesce(inst.resource_name, replace(key, "_", "-")),

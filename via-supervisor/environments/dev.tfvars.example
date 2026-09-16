@@ -55,12 +55,14 @@ secrets = {
   }
 }
 
-# Existing Cloud SQL instance (via-supervisor-devsecops-east4 in GCP).
-# edition=ENTERPRISE_PLUS requires db-perf-optimized-N-* tiers.
-# The import block in main.tf imports this instance on first apply.
+# Existing Cloud SQL instance.
+# Correct convention name: via-supervisor-devsecops-sql
+# Actual GCP name:         via-supervisor-devsecops-east4  (Cloud SQL cannot be renamed)
+# name_override pins Terraform to the real GCP name. New instances must not use name_override.
 sql_instances = {
-  east4 = {
-    resource_name       = "east4"
+  sql = {
+    resource_name       = "sql"
+    name_override       = "via-supervisor-devsecops-east4"
     edition             = "ENTERPRISE_PLUS"
     database_version    = "POSTGRES_18"
     tier                = "db-perf-optimized-N-2"

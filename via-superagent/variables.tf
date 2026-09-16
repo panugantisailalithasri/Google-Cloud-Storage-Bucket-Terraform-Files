@@ -90,10 +90,11 @@ variable "secrets" {
 }
 
 variable "sql_instances" {
-  description = "Cloud SQL instances. Instance name is composed as product-env-resource."
+  description = "Cloud SQL instances. Instance name is composed as product-env-resource. Set name_override only for pre-existing instances whose GCP name cannot be changed."
   type = map(object({
     product_name        = optional(string)
     resource_name       = optional(string)
+    name_override       = optional(string)
     edition             = optional(string, "ENTERPRISE")
     database_version    = string
     tier                = string
