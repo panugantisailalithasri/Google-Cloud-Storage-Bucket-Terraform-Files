@@ -28,10 +28,6 @@ parameters:
       - plan
       - apply
       - destroy
-  - name: imageTag
-    displayName: "Docker image tag to deploy (e.g. build number, commit SHA, or env tag)"
-    type: string
-    default: ""
 
 variables:
   terraformVersion: "1.9.8"
@@ -150,15 +146,9 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
-              IMAGE_TAG_ARG=""
-              if [ -n "${{ parameters.imageTag }}" ]; then
-                IMAGE_TAG_ARG="-var=image_tag=${{ parameters.imageTag }}"
-              fi
-
               terraform -chdir="$STACK" plan \
                 -var-file="environments/$(basename "$ENV_FILE")" \
-                -var="product_name=$(productName)" \
-                $IMAGE_TAG_ARG
+                -var="product_name=$(productName)"
             displayName: Terraform init and plan
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
@@ -240,15 +230,9 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
-                    IMAGE_TAG_ARG=""
-                    if [ -n "${{ parameters.imageTag }}" ]; then
-                      IMAGE_TAG_ARG="-var=image_tag=${{ parameters.imageTag }}"
-                    fi
-
                     terraform -chdir="$STACK" apply -auto-approve \
                       -var-file="environments/$(basename "$ENV_FILE")" \
-                      -var="product_name=$(productName)" \
-                      $IMAGE_TAG_ARG
+                      -var="product_name=$(productName)"
                   displayName: Terraform apply
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
@@ -321,15 +305,9 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
-                    IMAGE_TAG_ARG=""
-                    if [ -n "${{ parameters.imageTag }}" ]; then
-                      IMAGE_TAG_ARG="-var=image_tag=${{ parameters.imageTag }}"
-                    fi
-
                     terraform -chdir="$STACK" destroy -auto-approve \
                       -var-file="environments/$(basename "$ENV_FILE")" \
-                      -var="product_name=$(productName)" \
-                      $IMAGE_TAG_ARG
+                      -var="product_name=$(productName)"
                   displayName: Terraform destroy
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
