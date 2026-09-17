@@ -107,7 +107,7 @@ cloud_run_services = {
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
     extra_invoker_members = []
-    deletion_protection   = true
+    deletion_protection   = false
   }
 }
 

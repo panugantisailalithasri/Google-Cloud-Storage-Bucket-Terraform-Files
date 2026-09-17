@@ -98,7 +98,7 @@ cloud_run_services = {
     allow_unauthenticated = false
     # Supervisor Cloud Run runs as ado-deployer-v3 and calls superagent.
     extra_invoker_members = ["serviceAccount:ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"]
-    deletion_protection   = true
+    deletion_protection   = false
   }
 }
 
