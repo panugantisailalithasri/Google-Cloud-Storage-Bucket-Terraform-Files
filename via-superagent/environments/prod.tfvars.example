@@ -14,6 +14,9 @@ location     = "us-east4"
 
 runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
 
+# Image tag is injected by the pipeline: -var=image_tag=<tag>
+image_tag = "prod"
+
 labels = {
   team    = "ai-agents"
   program = "dso"
@@ -66,7 +69,7 @@ sql_instances = {
 cloud_run_services = {
   superagent = {
     resource_name      = "run"
-    image              = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent:dso"
+    image_repository   = "us-east4-docker.pkg.dev/freyr-ai/via-superagent/via-superagent"
     config_bucket_key  = "superagent"
     session_secret_key = "superagent_session"
     port               = 8080

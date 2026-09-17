@@ -126,7 +126,7 @@ module "cloud_run" {
   project_id            = var.project_id
   name                  = local.cloud_run_names[each.key]
   location              = var.region
-  image                 = each.value.image
+  image                 = "${each.value.image_repository}:${var.image_tag}"
   service_account_email = var.runtime_service_account_email
   port                  = each.value.port
   cpu                   = each.value.cpu

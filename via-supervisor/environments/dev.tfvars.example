@@ -15,6 +15,10 @@ location     = "us-east4"
 
 runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
 
+# Image tag is injected by the pipeline: -var=image_tag=<tag>
+# Set a fallback here for local terraform plan without the pipeline.
+image_tag = "devsecops"
+
 labels = {
   team    = "ai-agents"
   program = "dso"
@@ -80,7 +84,7 @@ sql_instances = {
 cloud_run_services = {
   supervisor = {
     resource_name      = "run"
-    image              = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor:dso"
+    image_repository   = "us-east4-docker.pkg.dev/freyr-ai/via-supervisor/via-supervisor"
     config_bucket_key  = "supervisor"
     session_secret_key = "supervisor_session"
     memory_secret_key  = "supervisor_memory"

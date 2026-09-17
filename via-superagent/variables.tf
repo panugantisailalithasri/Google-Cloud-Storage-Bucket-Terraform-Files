@@ -38,6 +38,16 @@ variable "runtime_service_account_email" {
   type        = string
 }
 
+variable "image_tag" {
+  description = "Docker image tag deployed to all Cloud Run services in this stack. Passed by the pipeline as -var=image_tag=<tag>. Must not be 'latest'."
+  type        = string
+
+  validation {
+    condition     = var.image_tag != "latest" && var.image_tag != ""
+    error_message = "image_tag must be a specific tag or digest. 'latest' and empty string are not allowed."
+  }
+}
+
 variable "labels" {
   description = "Extra labels merged onto every resource. Set in environments/*.tfvars."
   type        = map(string)
@@ -114,7 +124,7 @@ variable "cloud_run_services" {
   type = map(object({
     product_name          = optional(string)
     resource_name         = optional(string)
-    image                 = string
+    image_repository      = string
     port                  = number
     cpu                   = string
     memory                = string
