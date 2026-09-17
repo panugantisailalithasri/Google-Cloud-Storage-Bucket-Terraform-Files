@@ -28,6 +28,26 @@ parameters:
       - plan
       - apply
       - destroy
+  - name: ecsCluster
+    displayName: "ECS cluster name (leave blank to skip BE health checks)"
+    type: string
+    default: ""
+  - name: ecsService
+    displayName: "ECS service name (leave blank to skip BE health checks)"
+    type: string
+    default: ""
+  - name: ecsRegion
+    displayName: "AWS region for ECS checks"
+    type: string
+    default: us-east-1
+  - name: ecsExpectedRevision
+    displayName: "Expected ECS task definition revision (e.g. my-task:42, blank = skip check)"
+    type: string
+    default: ""
+  - name: ecsRequiredContainers
+    displayName: "Space-separated container names that must be RUNNING (blank = all)"
+    type: string
+    default: ""
 
 variables:
   terraformVersion: "1.9.8"
@@ -311,3 +331,44 @@ stages:
                   displayName: Terraform destroy
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
+
+  - stage: BE_HealthCheck
+    displayName: "BE Health Check (ECS)"
+    dependsOn: Apply
+    condition: |
+      and(
+        succeeded(),
+        eq('${{ parameters.action }}', 'apply'),
+        ne('${{ parameters.ecsCluster }}', ''),
+        ne('${{ parameters.ecsService }}', '')
+      )
+    jobs:
+      - job: ECSHealthCheck
+        displayName: "ECS deployment health check"
+        steps:
+          - checkout: self
+          - bash: |
+              set -euo pipefail
+              python3 -m pip install --quiet -r scripts/requirements-ecs-check.txt
+
+              EXTRA_ARGS=""
+              if [ -n "${{ parameters.ecsExpectedRevision }}" ]; then
+                EXTRA_ARGS="$EXTRA_ARGS --expected-revision '${{ parameters.ecsExpectedRevision }}'"
+              fi
+              if [ -n "${{ parameters.ecsRequiredContainers }}" ]; then
+                # shellcheck disable=SC2086
+                EXTRA_ARGS="$EXTRA_ARGS --required-containers ${{ parameters.ecsRequiredContainers }}"
+              fi
+
+              # shellcheck disable=SC2086
+              python3 scripts/ecs_health_check.py \
+                --cluster   "${{ parameters.ecsCluster }}" \
+                --service   "${{ parameters.ecsService }}" \
+                --region    "${{ parameters.ecsRegion }}" \
+                --output    text \
+                $EXTRA_ARGS
+            displayName: Run ECS health checks
+            env:
+              AWS_ACCESS_KEY_ID:     $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              AWS_SESSION_TOKEN:     $(AWS_SESSION_TOKEN)
