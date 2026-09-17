@@ -18,7 +18,7 @@ location     = "us-east4"
 runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
 
 # Image tag is injected by the pipeline: -var=image_tag=<tag>
-image_tag = "devsecops"
+image_tag = "8fdf73f3aa6b54207991baca73b6ee7837f8e335"
 
 labels = {
   team    = "ai-agents"
