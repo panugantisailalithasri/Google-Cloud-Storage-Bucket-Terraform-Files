@@ -1,4 +1,4 @@
-# via-supervisor stack for DevSecOps and Production.
+# via-superagent stack for DevSecOps and Production.
 # Calls reusable templates in ../modules. Env values: environments/<env>.tfvars
 # GCP names are composed in naming.tf as productname-ENVname-Resourcename.
 # Cloud Run runtime identity = var.runtime_service_account_email (existing SA, no SA created here).
