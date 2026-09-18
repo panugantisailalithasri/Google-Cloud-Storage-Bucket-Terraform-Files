@@ -67,6 +67,8 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 
 GCS JSON config objects are not uploaded by Terraform. Cloud Run env vars for bucket and secret **names** are injected from the composed names.
 
+Terraform does **not** grant project IAM (for example `roles/cloudsql.client`). The ADO identity `ado-deployer-v3@freyr-ai.iam.gserviceaccount.com` cannot call `resourcemanager.projects.setIamPolicy`. A GCP admin must grant Cloud SQL client (and other project roles) on that existing SA outside this stack.
+
 ### Cloud Run "failed to listen on PORT"
 
 The image already sets `PORT=8000` and `HOST=0.0.0.0`. Terraform sets `container_port = 8000` (Cloud Run then injects `PORT`; do not also set `PORT` in `env_vars`). If apply still fails with *container failed to start and listen on PORT=8000*, Cloud Run reached the process and the process never bound — usually a crash during import (missing GCS JSON, bad secret payload, Cloud SQL), not a port mismatch.
