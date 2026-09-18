@@ -297,8 +297,8 @@ stages:
                     VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
                     VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
                     VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
-              VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-devsecops-gcs-config)
-              VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-devsecops-gcs-config)
+                    VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-devsecops-gcs-config)
+                    VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-devsecops-gcs-config)
                 - bash: |
                     set +e
                     export GOOGLE_APPLICATION_CREDENTIALS="$(Pipeline.Workspace)/.workload_identity.wlconfig"
