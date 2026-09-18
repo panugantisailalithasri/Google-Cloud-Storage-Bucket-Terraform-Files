@@ -39,9 +39,22 @@ resource "google_cloud_run_v2_service" "this" {
       }
 
       resources {
+        cpu_idle          = var.min_instances > 0 ? false : true
+        startup_cpu_boost = true
         limits = {
           cpu    = var.cpu
           memory = var.memory
+        }
+      }
+
+      startup_probe {
+        failure_threshold     = 24
+        initial_delay_seconds = 5
+        period_seconds        = 10
+        timeout_seconds       = 5
+
+        tcp_socket {
+          port = var.port
         }
       }
 
@@ -68,6 +81,14 @@ resource "google_cloud_run_v2_service" "this" {
         }
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      client,
+      client_version,
+      traffic,
+    ]
   }
 }
 
