@@ -2,7 +2,7 @@
 
 - Reusable modules live in `modules/` (gcs-bucket, iam, secret-manager, cloud-run, cloud-sql). Do not run Terraform there.
 - Each agent/microservice has its own root folder (example: `via-supervisor/`). Env values live in `<agent>/environments/`.
-- via-supervisor deploys the DSO stack in `freyr-ai` / `us-east4`: Cloud Run, one config bucket, three secrets, two Cloud SQL instances (existing `via-supervisor-devsecops-east4` sessions + new `via-supervisor-devsecops-memory-sql` pgvector). Superagent is a separate folder.
+- via-supervisor deploys the DSO stack in `freyr-ai` / `us-east4`: Cloud Run, one config bucket, three secrets, two Cloud SQL instances (`via-supervisor-devsecops-sql` sessions + `via-supervisor-devsecops-memory-sql` pgvector). Superagent is a separate folder. Do not manage `via-supervisor-devsecops-east4`.
 - Each agent has a dedicated GCS remote-backend bucket named `<product_name>-tfstate` (example: `via-supervisor-tfstate`). Env isolation is the backend prefix (`dev` / `prod`). Create the bucket once from `<agent>/remote-backend/` before the first agent `terraform init`.
 - Resource names are composed in Terraform as `<product_name>-<environment>-<resource>` (example: `via-supervisor-prod-bucket`). `product_name` and `environment` come from tfvars / pipeline `productName`; each resource supplies only a suffix (`sa`, `bucket`, `run`, `sql`). Do not hardcode full GCP names in tfvars.
 - All agent stack variable values come from `<agent>/environments/<env>.tfvars` (no defaults in `variables.tf`). Remote-backend values come from `<agent>/remote-backend/terraform.tfvars`.

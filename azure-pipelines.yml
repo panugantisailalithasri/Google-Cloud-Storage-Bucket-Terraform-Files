@@ -168,6 +168,10 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
+              if [ "$(productName)" = "via-supervisor" ]; then
+                bash "$(Build.SourcesDirectory)/scripts/drop-east4-sql-from-state.sh" "$STACK"
+              fi
+
               EXTRA_VAR_FILE_ARGS=()
               if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
@@ -274,6 +278,10 @@ stages:
                     terraform -chdir="$STACK" init -reconfigure \
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
+
+                    if [ "$(productName)" = "via-supervisor" ]; then
+                      bash "$(Build.SourcesDirectory)/scripts/drop-east4-sql-from-state.sh" "$STACK"
+                    fi
 
                     EXTRA_VAR_FILE_ARGS=()
                     if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
