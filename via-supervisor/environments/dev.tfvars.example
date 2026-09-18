@@ -4,7 +4,8 @@
 # GCP names composed as productname-ENVname-Resourcename:
 #   via-supervisor-devsecops-bucket
 #   via-supervisor-devsecops-run
-#   via-supervisor-devsecops-east4   (existing Cloud SQL — sessions/checkpoints)
+#   via-supervisor-devsecops-east4       (existing Cloud SQL — sessions/checkpoints)
+#   via-supervisor-devsecops-memory-sql  (new Cloud SQL — pgvector / Mem0)
 
 product_name = "via-supervisor"
 environment  = "devsecops"
@@ -59,10 +60,11 @@ secrets = {
 # Never put real secret values in this file.
 secret_payloads = {}
 
-# Existing Cloud SQL instance.
-# Correct convention name: via-supervisor-devsecops-sql
-# Actual GCP name:         via-supervisor-devsecops-east4  (Cloud SQL cannot be renamed)
-# name_override pins Terraform to the real GCP name. New instances must not use name_override.
+# Two Cloud SQL instances (same split as Production):
+#   sql        — existing sessions/checkpoints (import via name_override)
+#   memory_sql — new pgvector/Mem0 instance (create; no name_override)
+# Convention name for sessions would be via-supervisor-devsecops-sql.
+# Actual GCP name is via-supervisor-devsecops-east4 (Cloud SQL cannot be renamed).
 sql_instances = {
   sql = {
     resource_name       = "sql"
@@ -77,6 +79,20 @@ sql_instances = {
     query_insights      = true
     deletion_protection = false
     ssl_mode            = "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"
+    kms_key_name        = null
+  }
+  memory_sql = {
+    resource_name       = "memory-sql"
+    edition             = "ENTERPRISE_PLUS"
+    database_version    = "POSTGRES_18"
+    tier                = "db-perf-optimized-N-2"
+    disk_size_gb        = 100
+    databases           = ["mem0_db"]
+    iam_authentication  = true
+    pitr_enabled        = true
+    query_insights      = true
+    deletion_protection = false
+    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
     kms_key_name        = null
   }
 }

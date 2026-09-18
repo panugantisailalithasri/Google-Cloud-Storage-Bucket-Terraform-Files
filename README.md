@@ -49,7 +49,8 @@ DevSecOps examples (`product_name = via-supervisor`, `environment = devsecops`):
 | Superagent bucket | `via-superagent-devsecops-bucket` |
 | Supervisor Cloud Run | `via-supervisor-devsecops-run` |
 | Superagent Cloud Run | `via-superagent-devsecops-run` |
-| Cloud SQL (existing) | `via-supervisor-devsecops-east4` |
+| Cloud SQL (sessions, existing) | `via-supervisor-devsecops-east4` |
+| Cloud SQL (memory / pgvector) | `via-supervisor-devsecops-memory-sql` |
 
 Production uses the same suffixes with `environment = prod` (`via-supervisor-prod-bucket`, `via-supervisor-prod-sql`, …).
 
@@ -62,7 +63,7 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | Cloud Run | Supervisor (public invoke; Cognito in-app) and superagent (invoker = supervisor SA) |
 | GCS | One config bucket per product |
 | Secrets | Supervisor/superagent secret, session, memory, cognito |
-| Cloud SQL | DevSecOps: existing `via-supervisor-devsecops-east4` only. Production: supervisor, superagent, and memory instances |
+| Cloud SQL | Supervisor DevSecOps: existing `via-supervisor-devsecops-east4` (sessions) plus new `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`). Superagent has its own SQL instance. Production: supervisor sql + memory-sql |
 | VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
 
 GCS JSON config objects are not uploaded by Terraform. `GCS_CONFIG_BUCKET` is set only when `config_bucket_name` is provided. The composed `product-env-bucket` is created empty; pointing Cloud Run at a missing object makes the process exit before it listens on `PORT`.

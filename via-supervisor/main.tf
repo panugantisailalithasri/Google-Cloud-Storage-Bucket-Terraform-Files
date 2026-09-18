@@ -37,8 +37,9 @@ locals {
     ] : [],
   ))
 
-  # Prefer the conventional "sql" handle; otherwise the first instance.
+  # Session/checkpoint instance (handle "sql"), then optional pgvector/memory instance.
   primary_sql = length(var.sql_instances) == 0 ? null : try(module.sql["sql"], values(module.sql)[0])
+  memory_sql  = try(module.sql["memory_sql"], null)
 }
 
 resource "google_project_service" "required" {
@@ -94,12 +95,15 @@ module "buckets" {
   depends_on = [google_project_service.required]
 }
 
-# Import the pre-existing Cloud SQL instance so Terraform manages it without
-# trying to create it again. Once the instance is in state this block is a no-op.
+# Import only instances that already exist in GCP (name_override).
+# New handles (for example memory-sql) must be created, not imported.
 import {
-  for_each = var.sql_instances
-  to       = module.sql[each.key].google_sql_database_instance.this
-  id       = "projects/${var.project_id}/instances/${local.sql_names[each.key]}"
+  for_each = {
+    for key, inst in var.sql_instances : key => inst
+    if inst.name_override != null && inst.name_override != ""
+  }
+  to = module.sql[each.key].google_sql_database_instance.this
+  id = "projects/${var.project_id}/instances/${local.sql_names[each.key]}"
 }
 
 module "sql" {
@@ -184,6 +188,12 @@ module "cloud_run" {
       CLOUD_SQL_CONNECTION_NAME = local.primary_sql.connection_name
       INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.primary_sql.connection_name}"
       DB_HOST                   = local.primary_sql.private_ip_address
+    },
+    local.memory_sql == null ? {} : {
+      MEMORY_CLOUD_SQL_CONNECTION_NAME = local.memory_sql.connection_name
+      MEMORY_INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.memory_sql.connection_name}"
+      MEMORY_DB_HOST                   = local.memory_sql.private_ip_address
+      MEMORY_DB_NAME                   = try(var.sql_instances["memory_sql"].databases[0], "mem0_db")
     },
     # tfvars win so HOST / GCS_CONFIG_BUCKET / ENVIRONMENT can be overridden.
     each.value.env_vars,
