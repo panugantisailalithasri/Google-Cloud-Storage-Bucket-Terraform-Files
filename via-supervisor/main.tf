@@ -126,14 +126,9 @@ module "sql" {
   depends_on = [google_project_service.required]
 }
 
-# Import pre-existing Cloud Run services so Terraform manages them without
-# trying to recreate them. Once in state this block is a no-op.
-import {
-  for_each = var.cloud_run_services
-  to       = module.cloud_run[each.key].google_cloud_run_v2_service.this
-  id       = "projects/${var.project_id}/locations/${var.region}/services/${local.cloud_run_names[each.key]}"
-}
-
+# Do not import Cloud Run: failed revisions leave no service to attach.
+# Apply creates via-supervisor-<env>-run. If a live service is later
+# adopted, add an import block only while that GCP name exists.
 module "cloud_run" {
   source   = "../modules/cloud-run"
   for_each = var.cloud_run_services
