@@ -69,8 +69,13 @@ variable "vpc_subnet" {
 }
 
 variable "vpc_egress" {
-  description = "Cloud Run VPC egress setting."
+  description = "Cloud Run VPC egress setting. Used only when cloud_run_direct_vpc is true."
   type        = string
+}
+
+variable "cloud_run_direct_vpc" {
+  description = "Attach Cloud Run to the VPC. False uses Cloud Run default internet (Vertex/PAC) and Cloud SQL via /cloudsql. SQL instances still use vpc_network for private IP."
+  type        = bool
 }
 
 variable "buckets" {

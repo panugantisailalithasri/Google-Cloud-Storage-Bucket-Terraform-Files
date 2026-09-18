@@ -190,8 +190,8 @@ module "cloud_run" {
   max_instances         = each.value.max_instances
   concurrency           = each.value.concurrency
   timeout_seconds       = each.value.timeout_seconds
-  vpc_network           = local.vpc_network_uri
-  vpc_subnet            = local.vpc_subnet_uri
+  vpc_network           = var.cloud_run_direct_vpc ? local.vpc_network_uri : ""
+  vpc_subnet            = var.cloud_run_direct_vpc ? local.vpc_subnet_uri : ""
   vpc_egress            = var.vpc_egress
   command               = each.value.command
   args                  = each.value.args
@@ -201,6 +201,9 @@ module "cloud_run" {
       HOST                        = "0.0.0.0"
       GOOGLE_CLOUD_PROJECT        = var.project_id
       GOOGLE_CLOUD_LOCATION       = var.region
+      GOOGLE_CLOUD_REGION         = var.region
+      VERTEX_LOCATION             = var.region
+      CLOUD_ML_REGION             = var.region
       PRODUCT_NAME                = coalesce(each.value.product_name, var.product_name)
       ENVIRONMENT                 = var.environment
       RESOURCE_NAME               = local.cloud_run_names[each.key]
@@ -228,17 +231,21 @@ module "cloud_run" {
     each.value.memory_secret_key == null ? {} : {
       MEMORY_SERVICE_SECRET_NAME = local.secret_names[each.value.memory_secret_key]
     },
-    local.primary_sql == null ? {} : {
-      CLOUD_SQL_CONNECTION_NAME = local.primary_sql.connection_name
-      INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.primary_sql.connection_name}"
-      DB_HOST                   = local.primary_sql.private_ip_address
-    },
-    local.memory_sql == null ? {} : {
-      MEMORY_CLOUD_SQL_CONNECTION_NAME = local.memory_sql.connection_name
-      MEMORY_INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.memory_sql.connection_name}"
-      MEMORY_DB_HOST                   = local.memory_sql.private_ip_address
-      MEMORY_DB_NAME                   = try(var.sql_instances["memory_sql"].databases[0], "mem0_db")
-    },
+    local.primary_sql == null ? {} : merge(
+      {
+        CLOUD_SQL_CONNECTION_NAME = local.primary_sql.connection_name
+        INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.primary_sql.connection_name}"
+      },
+      var.cloud_run_direct_vpc ? { DB_HOST = local.primary_sql.private_ip_address } : {},
+    ),
+    local.memory_sql == null ? {} : merge(
+      {
+        MEMORY_CLOUD_SQL_CONNECTION_NAME = local.memory_sql.connection_name
+        MEMORY_INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.memory_sql.connection_name}"
+        MEMORY_DB_NAME                   = try(var.sql_instances["memory_sql"].databases[0], "mem0_db")
+      },
+      var.cloud_run_direct_vpc ? { MEMORY_DB_HOST = local.memory_sql.private_ip_address } : {},
+    ),
     # tfvars win so HOST / GCS_CONFIG_BUCKET / ENVIRONMENT can be overridden.
     each.value.env_vars,
   )

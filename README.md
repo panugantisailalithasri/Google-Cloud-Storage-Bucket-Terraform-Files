@@ -72,7 +72,7 @@ Terraform does **not** grant project IAM (for example `roles/cloudsql.client`). 
 
 ### Cloud Run "failed to listen on PORT"
 
-The image already sets `PORT=8000` and `HOST=0.0.0.0`. Terraform sets `container_port = 8000` (Cloud Run then injects `PORT`; do not also set `PORT` in `env_vars`). If apply still fails with *container failed to start and listen on PORT=8000*, Cloud Run reached the process and the process never bound — usually a crash during import (missing GCS JSON, bad secret payload, Cloud SQL), not a port mismatch.
+The image already sets `PORT=8000` and `HOST=0.0.0.0`. Terraform sets `container_port = 8000` (Cloud Run then injects `PORT`; do not also set `PORT` in `env_vars`). If apply still fails with *container failed to start and listen on PORT=8000*, Cloud Run reached the process and the process never bound — usually a crash during import (missing GCS JSON, bad secret payload, Cloud SQL, or an httpx timeout to Vertex/PAC). DSO sets `cloud_run_direct_vpc = false` so those public APIs use Cloud Run internet; Cloud SQL is reached via the `/cloudsql` socket.
 
 Check the revision logs first:
 
