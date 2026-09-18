@@ -29,9 +29,8 @@ enable_apis = true
 vpc_network = "freya-ai-dev-vpc"
 vpc_subnet  = "freya-ai-dev-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
-# Direct VPC made Vertex/PAC httpx calls time out before the process bound PORT.
-# Cloud SQL stays on the VPC; Cloud Run uses the /cloudsql socket instead.
-cloud_run_direct_vpc = false
+# Match existing via-supervisor-dso Networking: Direct VPC, private IPs only.
+cloud_run_direct_vpc = true
 
 buckets = {
   supervisor = {

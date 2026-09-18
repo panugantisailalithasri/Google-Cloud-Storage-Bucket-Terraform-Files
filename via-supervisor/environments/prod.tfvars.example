@@ -28,7 +28,7 @@ enable_apis = true
 vpc_network = "freya-ai-dev-vpc"
 vpc_subnet  = "freya-ai-dev-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
-cloud_run_direct_vpc = false
+cloud_run_direct_vpc = true
 
 buckets = {
   supervisor = {
