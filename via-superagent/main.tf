@@ -53,7 +53,8 @@ module "secrets" {
   labels     = local.labels
   secrets = {
     for key in keys(var.secrets) : local.secret_names[key] => {
-      accessors = [local.runtime_sa_member]
+      accessors   = [local.runtime_sa_member]
+      secret_data = try(var.secret_payloads[key], null)
     }
   }
 

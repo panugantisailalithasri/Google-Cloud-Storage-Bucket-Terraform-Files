@@ -50,6 +50,8 @@ secrets = {
   }
 }
 
+secret_payloads = {}
+
 sql_instances = {
   sql = {
     resource_name       = "sql"

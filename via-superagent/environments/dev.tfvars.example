@@ -53,6 +53,8 @@ secrets = {
   }
 }
 
+secret_payloads = {}
+
 # Existing Cloud SQL instance for superagent sessions.
 sql_instances = {
   sql = {

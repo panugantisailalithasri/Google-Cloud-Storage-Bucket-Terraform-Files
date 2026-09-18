@@ -99,6 +99,12 @@ variable "secrets" {
   }))
 }
 
+variable "secret_payloads" {
+  description = "Optional map of secret handle => payload. Pipeline injects ADO variable-group values; leave empty in tfvars. Never commit real secret data."
+  type        = map(string)
+  sensitive   = true
+}
+
 variable "sql_instances" {
   description = "Cloud SQL instances. Instance name is composed as product-env-resource. Set name_override only for pre-existing instances whose GCP name cannot be changed."
   type = map(object({

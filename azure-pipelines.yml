@@ -30,21 +30,36 @@ parameters:
       - destroy
 
 variables:
-  terraformVersion: "1.9.8"
-  productName: ${{ parameters.productName }}
-  environment: ${{ parameters.environment }}
-  stateBucket: ${{ parameters.productName }}-tfstate
-  statePrefix: ${{ parameters.environment }}
-  # ARM service connection used to mint an OIDC token for GCP WIF
-  armServiceConnection: GCP_freyrai_service_role
-  gcpProjectId: freyr-ai
-  gcpProjectNumber: "711982279551"
-  gcpRegion: us-east4
-  gcpVpc: freya-ai-dev-vpc
-  gcpSubnet: freya-ai-dev-subnet-us-east4
-  gcpPoolId: azure-devops-pool-v3
-  gcpProviderId: azure-devops-provider-v3
-  gcpServiceAccountEmail: ado-deployer-v3@freyr-ai.iam.gserviceaccount.com
+  - name: terraformVersion
+    value: "1.9.8"
+  - name: productName
+    value: ${{ parameters.productName }}
+  - name: environment
+    value: ${{ parameters.environment }}
+  - name: stateBucket
+    value: ${{ parameters.productName }}-tfstate
+  - name: statePrefix
+    value: ${{ parameters.environment }}
+  - name: armServiceConnection
+    value: GCP_freyrai_service_role
+  - name: gcpProjectId
+    value: freyr-ai
+  - name: gcpProjectNumber
+    value: "711982279551"
+  - name: gcpRegion
+    value: us-east4
+  - name: gcpVpc
+    value: freya-ai-dev-vpc
+  - name: gcpSubnet
+    value: freya-ai-dev-subnet-us-east4
+  - name: gcpPoolId
+    value: azure-devops-pool-v3
+  - name: gcpProviderId
+    value: azure-devops-provider-v3
+  - name: gcpServiceAccountEmail
+    value: ado-deployer-v3@freyr-ai.iam.gserviceaccount.com
+  - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
+    - group: via-supervisor-devsecops-secrets-GCP
 
 pool:
   vmImage: ubuntu-latest
@@ -146,12 +161,20 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
+              if [ "$(productName)" = "via-supervisor" ] && [ "$(environment)" = "dev" ]; then
+                export REQUIRE_SECRET_PAYLOADS=1
+                export TF_VAR_secret_payloads="$(bash scripts/export-tf-secret-payloads.sh)"
+              fi
+
               terraform -chdir="$STACK" plan \
                 -var-file="environments/$(basename "$ENV_FILE")" \
                 -var="product_name=$(productName)"
             displayName: Terraform init and plan
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
+              VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
+              VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
+              VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
 
   - stage: Apply
     displayName: Terraform apply
@@ -230,12 +253,20 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
+                    if [ "$(productName)" = "via-supervisor" ] && [ "$(environment)" = "dev" ]; then
+                      export REQUIRE_SECRET_PAYLOADS=1
+                      export TF_VAR_secret_payloads="$(bash scripts/export-tf-secret-payloads.sh)"
+                    fi
+
                     terraform -chdir="$STACK" apply -auto-approve \
                       -var-file="environments/$(basename "$ENV_FILE")" \
                       -var="product_name=$(productName)"
                   displayName: Terraform apply
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
+                    VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
+                    VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
+                    VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
 
   - stage: Destroy
     displayName: Terraform destroy

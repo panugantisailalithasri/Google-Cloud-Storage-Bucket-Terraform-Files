@@ -58,6 +58,9 @@ secrets = {
   }
 }
 
+# Production secret payloads will come from a prod ADO variable group later.
+secret_payloads = {}
+
 sql_instances = {
   sql = {
     resource_name       = "sql"

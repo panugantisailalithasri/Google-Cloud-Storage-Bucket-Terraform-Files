@@ -4,9 +4,10 @@ variable "project_id" {
 }
 
 variable "secrets" {
-  description = "Map of secret key => accessors. Secret values are not managed here; add versions out of band or via CI secrets."
+  description = "Map of secret id => accessors and optional payload. When secret_data is set, a Secret Manager version is created (payload comes from ADO, not git)."
   type = map(object({
-    accessors = optional(list(string), [])
+    accessors   = optional(list(string), [])
+    secret_data = optional(string)
   }))
   default = {}
 

@@ -59,6 +59,11 @@ secrets = {
   }
 }
 
+# Payloads for supervisor/session/memory come from ADO variable group
+# via-supervisor-devsecops-secrets-GCP (pipeline injects TF_VAR_secret_payloads).
+# Never put real secret values in this file.
+secret_payloads = {}
+
 # Existing Cloud SQL instance.
 # Correct convention name: via-supervisor-devsecops-sql
 # Actual GCP name:         via-supervisor-devsecops-east4  (Cloud SQL cannot be renamed)
