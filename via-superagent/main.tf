@@ -137,7 +137,6 @@ module "cloud_run" {
   env_vars = merge(
     each.value.env_vars,
     {
-      PORT                        = tostring(each.value.port)
       PRODUCT_NAME                = coalesce(each.value.product_name, var.product_name)
       ENVIRONMENT                 = var.environment
       RESOURCE_NAME               = local.cloud_run_names[each.key]
