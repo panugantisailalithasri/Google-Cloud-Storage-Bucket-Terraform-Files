@@ -208,17 +208,5 @@ module "cloud_run" {
     module.secrets,
     module.buckets,
     module.sql,
-    google_project_iam_member.runtime_cloudsql_client,
   ]
-}
-
-# Cloud Run Auth Proxy (/cloudsql) and private-IP clients need this on the runtime SA.
-resource "google_project_iam_member" "runtime_cloudsql_client" {
-  count = length(var.sql_instances) > 0 ? 1 : 0
-
-  project = var.project_id
-  role    = "roles/cloudsql.client"
-  member  = local.runtime_sa_member
-
-  depends_on = [google_project_service.required]
 }
