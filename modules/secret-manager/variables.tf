@@ -4,10 +4,9 @@ variable "project_id" {
 }
 
 variable "secrets" {
-  description = "Map of secret id => accessors and optional payload. When secret_data is set, a Secret Manager version is created (payload comes from ADO, not git)."
+  description = "Map of secret id => accessors. Payloads are passed separately in secret_payloads so for_each keys stay non-sensitive."
   type = map(object({
-    accessors   = optional(list(string), [])
-    secret_data = optional(string)
+    accessors = optional(list(string), [])
   }))
   default = {}
 
@@ -24,5 +23,12 @@ variable "secrets" {
 variable "labels" {
   description = "Labels applied to every secret."
   type        = map(string)
+  default     = {}
+}
+
+variable "secret_payloads" {
+  description = "Map of secret id => payload. Keys must match var.secrets. Values come from ADO, not git."
+  type        = map(string)
+  sensitive   = true
   default     = {}
 }

@@ -53,9 +53,12 @@ module "secrets" {
   labels     = local.labels
   secrets = {
     for key in keys(var.secrets) : local.secret_names[key] => {
-      accessors   = [local.runtime_sa_member]
-      secret_data = try(var.secret_payloads[key], null)
+      accessors = [local.runtime_sa_member]
     }
+  }
+  secret_payloads = {
+    for key, payload in var.secret_payloads : local.secret_names[key] => payload
+    if payload != null && payload != ""
   }
 
   depends_on = [google_project_service.required]

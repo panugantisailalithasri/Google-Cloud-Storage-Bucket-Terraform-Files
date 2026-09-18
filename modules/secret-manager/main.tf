@@ -30,11 +30,8 @@ resource "google_secret_manager_secret_iam_member" "accessor" {
 }
 
 resource "google_secret_manager_secret_version" "this" {
-  for_each = {
-    for secret_id, secret in var.secrets : secret_id => secret
-    if try(secret.secret_data, null) != null && try(secret.secret_data, "") != ""
-  }
+  for_each = toset(nonsensitive(keys(var.secret_payloads)))
 
   secret      = google_secret_manager_secret.this[each.key].id
-  secret_data = each.value.secret_data
+  secret_data = var.secret_payloads[each.key]
 }
