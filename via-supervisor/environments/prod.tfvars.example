@@ -6,7 +6,6 @@
 #   via-supervisor-prod-run
 #   via-supervisor-prod-sql         (sessions + checkpoints)
 #   via-supervisor-prod-memory-sql  (pgvector)
-#   via-supervisor-prod-cognito     (shared cognito secret)
 
 product_name = "via-supervisor"
 environment  = "prod"
@@ -52,9 +51,6 @@ secrets = {
   }
   supervisor_memory = {
     resource_name = "memory"
-  }
-  cognito = {
-    resource_name = "cognito"
   }
 }
 
@@ -111,7 +107,6 @@ cloud_run_services = {
       VIA_SUPERVISOR_SECRET = "supervisor"
       VIA_SESSION_SECRET    = "supervisor_session"
       VIA_MEMORY_SECRET     = "supervisor_memory"
-      VIA_COGNITO_M2M       = "cognito"
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true

@@ -4,10 +4,8 @@
 # GCP names composed as productname-ENVname-Resourcename:
 #   via-superagent-devsecops-bucket
 #   via-superagent-devsecops-run
-#   via-superagent-devsecops-sql    (sessions/checkpoints)
-#
-# The cognito secret is OWNED by via-supervisor. It is referenced here via
-# extra_secret_env_vars using its full secret ID; no duplicate resource is created.
+#   via-superagent-devsecops-sql
+#   via-superagent-devsecops-secret / session / cognito
 
 product_name = "via-superagent"
 environment  = "devsecops"
@@ -51,8 +49,12 @@ secrets = {
   superagent_session = {
     resource_name = "session"
   }
+  cognito = {
+    resource_name = "cognito"
+  }
 }
 
+# Payloads come from ADO variable group via-superagent-devsecops-secrets-GCP.
 secret_payloads = {}
 
 # Existing Cloud SQL instance for superagent sessions.
@@ -91,14 +93,11 @@ cloud_run_services = {
     secret_env_keys = {
       VIA_SUPERAGENT_SECRET = "superagent"
       VIA_SESSION_SECRET    = "superagent_session"
+      VIA_COGNITO_M2M       = "cognito"
     }
-    # Cognito secret is owned by via-supervisor; referenced here by its full ID.
-    extra_secret_env_vars = {
-      VIA_COGNITO_M2M = "via-supervisor-devsecops-cognito"
-    }
+    extra_secret_env_vars = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false
-    # Supervisor Cloud Run runs as ado-deployer-v3 and calls superagent.
     extra_invoker_members = ["serviceAccount:ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = false
   }

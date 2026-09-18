@@ -60,6 +60,8 @@ variables:
     value: ado-deployer-v3@freyr-ai.iam.gserviceaccount.com
   - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
     - group: via-supervisor-devsecops-secrets-GCP
+  - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
+    - group: via-superagent-devsecops-secrets-GCP
 
 pool:
   vmImage: ubuntu-latest
@@ -161,8 +163,9 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
-              if [ "$(productName)" = "via-supervisor" ] && [ "$(environment)" = "dev" ]; then
+              if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
+                export PRODUCT_NAME="$(productName)"
                 export TF_VAR_secret_payloads="$(bash scripts/export-tf-secret-payloads.sh)"
               fi
 
@@ -175,6 +178,9 @@ stages:
               VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
               VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
               VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
+              VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
+              VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
+              VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
 
   - stage: Apply
     displayName: Terraform apply
@@ -253,8 +259,9 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
-                    if [ "$(productName)" = "via-supervisor" ] && [ "$(environment)" = "dev" ]; then
+                    if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                       export REQUIRE_SECRET_PAYLOADS=1
+                      export PRODUCT_NAME="$(productName)"
                       export TF_VAR_secret_payloads="$(bash scripts/export-tf-secret-payloads.sh)"
                     fi
 
@@ -267,6 +274,9 @@ stages:
                     VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
                     VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
                     VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
+                    VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
+                    VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
+                    VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
 
   - stage: Destroy
     displayName: Terraform destroy

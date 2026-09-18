@@ -48,6 +48,9 @@ secrets = {
   superagent_session = {
     resource_name = "session"
   }
+  cognito = {
+    resource_name = "cognito"
+  }
 }
 
 secret_payloads = {}
@@ -87,10 +90,9 @@ cloud_run_services = {
     secret_env_keys = {
       VIA_SUPERAGENT_SECRET = "superagent"
       VIA_SESSION_SECRET    = "superagent_session"
+      VIA_COGNITO_M2M       = "cognito"
     }
-    extra_secret_env_vars = {
-      VIA_COGNITO_M2M = "via-supervisor-prod-cognito"
-    }
+    extra_secret_env_vars = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false
     extra_invoker_members = ["serviceAccount:ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"]

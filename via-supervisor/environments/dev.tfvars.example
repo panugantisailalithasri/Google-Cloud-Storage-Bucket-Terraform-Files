@@ -5,7 +5,6 @@
 #   via-supervisor-devsecops-bucket
 #   via-supervisor-devsecops-run
 #   via-supervisor-devsecops-east4   (existing Cloud SQL — sessions/checkpoints)
-#   via-supervisor-devsecops-cognito (shared cognito secret, read by superagent too)
 
 product_name = "via-supervisor"
 environment  = "devsecops"
@@ -52,10 +51,6 @@ secrets = {
   }
   supervisor_memory = {
     resource_name = "memory"
-  }
-  # Cognito M2M is owned here; via-superagent references it via extra_secret_env_vars.
-  cognito = {
-    resource_name = "cognito"
   }
 }
 
@@ -107,7 +102,6 @@ cloud_run_services = {
       VIA_SUPERVISOR_SECRET = "supervisor"
       VIA_SESSION_SECRET    = "supervisor_session"
       VIA_MEMORY_SECRET     = "supervisor_memory"
-      VIA_COGNITO_M2M       = "cognito"
     }
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
