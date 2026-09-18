@@ -85,8 +85,7 @@ cloud_run_services = {
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      HOST              = "0.0.0.0"
-      GCS_CONFIG_OBJECT = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
+      HOST = "0.0.0.0"
     }
     secret_env_keys = {
       VIA_SUPERAGENT_SECRET = "superagent"

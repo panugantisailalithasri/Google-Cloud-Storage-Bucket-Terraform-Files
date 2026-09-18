@@ -43,9 +43,12 @@ resource "google_cloud_run_v2_service" "this" {
     }
 
     containers {
-      image   = var.image
-      command = var.command
-      args    = var.args
+      image = var.image
+      # Only override image ENTRYPOINT/CMD when tfvars set a non-empty list.
+      # Passing command = [] / null has cleared the image command on Cloud Run
+      # and the process exits before it can listen on PORT.
+      command = length(coalesce(var.command, [])) > 0 ? var.command : null
+      args    = length(coalesce(var.args, [])) > 0 ? var.args : null
 
       ports {
         container_port = var.port

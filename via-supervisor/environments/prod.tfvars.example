@@ -101,8 +101,8 @@ cloud_run_services = {
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
-      HOST              = "0.0.0.0"
-      GCS_CONFIG_OBJECT = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
+      HOST = "0.0.0.0"
+      # Set config_bucket_name + GCS_CONFIG_OBJECT after the JSON is uploaded.
     }
     secret_env_keys = {
       VIA_SUPERVISOR_SECRET = "supervisor"

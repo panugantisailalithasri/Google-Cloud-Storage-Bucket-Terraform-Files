@@ -65,7 +65,7 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | Cloud SQL | DevSecOps: existing `via-supervisor-devsecops-east4` only. Production: supervisor, superagent, and memory instances |
 | VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
 
-GCS JSON config objects are not uploaded by Terraform. Cloud Run env vars for bucket and secret **names** are injected from the composed names.
+GCS JSON config objects are not uploaded by Terraform. `GCS_CONFIG_BUCKET` is set only when `config_bucket_name` is provided. The composed `product-env-bucket` is created empty; pointing Cloud Run at a missing object makes the process exit before it listens on `PORT`.
 
 Terraform does **not** grant project IAM (for example `roles/cloudsql.client`). The ADO identity `ado-deployer-v3@freyr-ai.iam.gserviceaccount.com` cannot call `resourcemanager.projects.setIamPolicy`. A GCP admin must grant Cloud SQL client (and other project roles) on that existing SA outside this stack.
 

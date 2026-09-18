@@ -168,11 +168,11 @@ module "cloud_run" {
       REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
       CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
     },
-    each.value.config_bucket_name == null && each.value.config_bucket_key == null ? {} : {
-      GCS_CONFIG_BUCKET = coalesce(
-        each.value.config_bucket_name,
-        try(local.bucket_names[each.value.config_bucket_key], null),
-      )
+    # Only an explicit bucket name is injected. The composed product-env-bucket
+    # is empty until someone uploads the JSON; pointing Cloud Run at it makes
+    # the process exit before it binds PORT.
+    each.value.config_bucket_name == null ? {} : {
+      GCS_CONFIG_BUCKET = each.value.config_bucket_name
     },
     each.value.session_secret_key == null ? {} : {
       SESSION_SERVICE_SECRET_NAME = local.secret_names[each.value.session_secret_key]
