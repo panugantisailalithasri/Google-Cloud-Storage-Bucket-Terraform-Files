@@ -142,8 +142,11 @@ variable "cloud_run_services" {
     secret_env_keys       = map(string)
     extra_secret_env_vars = optional(map(string), {})
     config_bucket_key     = optional(string)
+    config_bucket_name    = optional(string)
     session_secret_key    = optional(string)
     memory_secret_key     = optional(string)
+    command               = optional(list(string))
+    args                  = optional(list(string))
     ingress               = string
     allow_unauthenticated = bool
     extra_invoker_members = list(string)

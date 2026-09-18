@@ -96,6 +96,10 @@ cloud_run_services = {
     concurrency           = 320
     timeout_seconds       = 300
     env_vars = {
+      # Must match the image ENV HOST=0.0.0.0 (uvicorn defaults to 127.0.0.1).
+      HOST              = "0.0.0.0"
+      # Object must already exist in GCS_CONFIG_BUCKET (composed name unless
+      # config_bucket_name is set). Terraform does not upload this JSON.
       GCS_CONFIG_OBJECT = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
     }
     secret_env_keys = {

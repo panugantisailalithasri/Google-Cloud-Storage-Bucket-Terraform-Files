@@ -81,6 +81,24 @@ variable "secret_env_vars" {
   default     = {}
 }
 
+variable "command" {
+  description = "Optional container command (image ENTRYPOINT override). Null keeps the image command."
+  type        = list(string)
+  default     = null
+}
+
+variable "args" {
+  description = "Optional container args (image CMD override). Null keeps the image args."
+  type        = list(string)
+  default     = null
+}
+
+variable "cloud_sql_instances" {
+  description = "Cloud SQL instance connection names to mount at /cloudsql."
+  type        = list(string)
+  default     = []
+}
+
 variable "ingress" {
   description = "Ingress restriction."
   type        = string

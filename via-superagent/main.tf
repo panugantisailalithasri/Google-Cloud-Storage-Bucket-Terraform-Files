@@ -36,6 +36,9 @@ locals {
       "telemetry.googleapis.com",
     ] : [],
   ))
+
+  # Prefer the conventional "sql" handle; otherwise the first instance.
+  primary_sql = length(var.sql_instances) == 0 ? null : try(module.sql["sql"], values(module.sql)[0])
 }
 
 resource "google_project_service" "required" {
@@ -134,9 +137,14 @@ module "cloud_run" {
   vpc_network           = local.vpc_network_uri
   vpc_subnet            = local.vpc_subnet_uri
   vpc_egress            = var.vpc_egress
+  command               = each.value.command
+  args                  = each.value.args
+  cloud_sql_instances   = [for inst in module.sql : inst.connection_name]
   env_vars = merge(
-    each.value.env_vars,
     {
+      HOST                        = "0.0.0.0"
+      GOOGLE_CLOUD_PROJECT        = var.project_id
+      GOOGLE_CLOUD_LOCATION       = var.region
       PRODUCT_NAME                = coalesce(each.value.product_name, var.product_name)
       ENVIRONMENT                 = var.environment
       RESOURCE_NAME               = local.cloud_run_names[each.key]
@@ -149,8 +157,11 @@ module "cloud_run" {
       REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
       CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
     },
-    each.value.config_bucket_key == null ? {} : {
-      GCS_CONFIG_BUCKET = local.bucket_names[each.value.config_bucket_key]
+    each.value.config_bucket_name == null && each.value.config_bucket_key == null ? {} : {
+      GCS_CONFIG_BUCKET = coalesce(
+        each.value.config_bucket_name,
+        try(local.bucket_names[each.value.config_bucket_key], null),
+      )
     },
     each.value.session_secret_key == null ? {} : {
       SESSION_SERVICE_SECRET_NAME = local.secret_names[each.value.session_secret_key]
@@ -158,6 +169,13 @@ module "cloud_run" {
     each.value.memory_secret_key == null ? {} : {
       MEMORY_SERVICE_SECRET_NAME = local.secret_names[each.value.memory_secret_key]
     },
+    local.primary_sql == null ? {} : {
+      CLOUD_SQL_CONNECTION_NAME = local.primary_sql.connection_name
+      INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.primary_sql.connection_name}"
+      DB_HOST                   = local.primary_sql.private_ip_address
+    },
+    # tfvars win so HOST / GCS_CONFIG_BUCKET / ENVIRONMENT can be overridden.
+    each.value.env_vars,
   )
   secret_env_vars = merge(
     { for env_name, secret_key in each.value.secret_env_keys : env_name => local.secret_names[secret_key] },
@@ -172,6 +190,19 @@ module "cloud_run" {
   depends_on = [
     google_project_service.required,
     module.secrets,
+    module.buckets,
     module.sql,
+    google_project_iam_member.runtime_cloudsql_client,
   ]
+}
+
+# Cloud Run Auth Proxy (/cloudsql) and private-IP clients need this on the runtime SA.
+resource "google_project_iam_member" "runtime_cloudsql_client" {
+  count = length(var.sql_instances) > 0 ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = local.runtime_sa_member
+
+  depends_on = [google_project_service.required]
 }

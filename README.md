@@ -67,6 +67,29 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 
 GCS JSON config objects are not uploaded by Terraform. Cloud Run env vars for bucket and secret **names** are injected from the composed names.
 
+### Cloud Run "failed to listen on PORT"
+
+The image already sets `PORT=8000` and `HOST=0.0.0.0`. Terraform sets `container_port = 8000` (Cloud Run then injects `PORT`; do not also set `PORT` in `env_vars`). If apply still fails with *container failed to start and listen on PORT=8000*, Cloud Run reached the process and the process never bound — usually a crash during import (missing GCS JSON, bad secret payload, Cloud SQL), not a port mismatch.
+
+Check the revision logs first:
+
+```text
+https://console.cloud.google.com/run/detail/us-east4/via-supervisor-devsecops-run/logs?project=freyr-ai
+```
+
+Confirm the config object exists in the bucket Cloud Run is pointed at:
+
+```bash
+gcloud storage ls gs://via-supervisor-devsecops-bucket/ff-freya-supervisor/dev/ff-freya-supervisor-common.json
+```
+
+If the JSON lives in another bucket, set `config_bucket_name` (or `env_vars.GCS_CONFIG_BUCKET`) on the Cloud Run service. Upload is outside Terraform:
+
+```bash
+gcloud storage cp ff-freya-supervisor-common.json \
+  gs://via-supervisor-devsecops-bucket/ff-freya-supervisor/dev/ff-freya-supervisor-common.json
+```
+
 A new agent is a copy of `via-supervisor/` renamed to the product name. That copy gets its own state bucket (`<product_name>-tfstate`).
 
 ## Remote backend (one bucket per agent)

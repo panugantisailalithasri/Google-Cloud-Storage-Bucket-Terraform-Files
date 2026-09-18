@@ -31,8 +31,21 @@ resource "google_cloud_run_v2_service" "this" {
       }
     }
 
+    dynamic "volumes" {
+      for_each = length(var.cloud_sql_instances) > 0 ? [1] : []
+
+      content {
+        name = "cloudsql"
+        cloud_sql_instance {
+          instances = var.cloud_sql_instances
+        }
+      }
+    }
+
     containers {
-      image = var.image
+      image   = var.image
+      command = var.command
+      args    = var.args
 
       ports {
         container_port = var.port
@@ -47,14 +60,25 @@ resource "google_cloud_run_v2_service" "this" {
         }
       }
 
+      # Cloud Run fails the revision if nothing listens on PORT. Give the
+      # Python/ADK import path time to bind (image ENV PORT/HOST is 8000/0.0.0.0).
       startup_probe {
-        failure_threshold     = 24
-        initial_delay_seconds = 5
+        failure_threshold     = 36
+        initial_delay_seconds = 10
         period_seconds        = 10
         timeout_seconds       = 5
 
         tcp_socket {
           port = var.port
+        }
+      }
+
+      dynamic "volume_mounts" {
+        for_each = length(var.cloud_sql_instances) > 0 ? [1] : []
+
+        content {
+          name       = "cloudsql"
+          mount_path = "/cloudsql"
         }
       }
 
