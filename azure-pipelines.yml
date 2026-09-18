@@ -97,6 +97,11 @@ stages:
     jobs:
       - job: Plan
         displayName: Plan ${{ parameters.productName }} ${{ parameters.environment }}
+        variables:
+          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
+            - group: via-supervisor-devsecops-secrets-GCP
+          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
+            - group: via-superagent-devsecops-secrets-GCP
         steps:
           - checkout: self
           - bash: |
@@ -163,15 +168,19 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
+              EXTRA_VAR_FILE_ARGS=()
               if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
                 export PRODUCT_NAME="$(productName)"
-                export TF_VAR_secret_payloads="$(bash scripts/export-tf-secret-payloads.sh)"
+                PAYLOAD_FILE="$(Pipeline.Workspace)/secret_payloads.tfvars.json"
+                bash "$(Build.SourcesDirectory)/scripts/export-tf-secret-payloads.sh" "$PAYLOAD_FILE"
+                EXTRA_VAR_FILE_ARGS+=(-var-file="$PAYLOAD_FILE")
               fi
 
               terraform -chdir="$STACK" plan \
                 -var-file="environments/$(basename "$ENV_FILE")" \
-                -var="product_name=$(productName)"
+                -var="product_name=$(productName)" \
+                "${EXTRA_VAR_FILE_ARGS[@]}"
             displayName: Terraform init and plan
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
@@ -190,6 +199,11 @@ stages:
       - deployment: Apply
         displayName: Apply ${{ parameters.productName }} ${{ parameters.environment }}
         environment: gcp-${{ parameters.environment }}
+        variables:
+          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
+            - group: via-supervisor-devsecops-secrets-GCP
+          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
+            - group: via-superagent-devsecops-secrets-GCP
         strategy:
           runOnce:
             deploy:
@@ -259,15 +273,19 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
+                    EXTRA_VAR_FILE_ARGS=()
                     if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                       export REQUIRE_SECRET_PAYLOADS=1
                       export PRODUCT_NAME="$(productName)"
-                      export TF_VAR_secret_payloads="$(bash scripts/export-tf-secret-payloads.sh)"
+                      PAYLOAD_FILE="$(Pipeline.Workspace)/secret_payloads.tfvars.json"
+                      bash "$(Build.SourcesDirectory)/scripts/export-tf-secret-payloads.sh" "$PAYLOAD_FILE"
+                      EXTRA_VAR_FILE_ARGS+=(-var-file="$PAYLOAD_FILE")
                     fi
 
                     terraform -chdir="$STACK" apply -auto-approve \
                       -var-file="environments/$(basename "$ENV_FILE")" \
-                      -var="product_name=$(productName)"
+                      -var="product_name=$(productName)" \
+                      "${EXTRA_VAR_FILE_ARGS[@]}"
                   displayName: Terraform apply
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
