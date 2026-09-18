@@ -57,6 +57,14 @@ secrets = {
 # Payloads come from ADO variable group via-superagent-devsecops-secrets-GCP.
 secret_payloads = {}
 
+gcs_config_objects = {
+  superagent = {
+    bucket_key  = "superagent"
+    object_name = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
+  }
+}
+config_object_payloads = {}
+
 # Existing Cloud SQL instance for superagent sessions.
 sql_instances = {
   sql = {
@@ -90,8 +98,6 @@ cloud_run_services = {
     env_vars = {
       HOST        = "0.0.0.0"
       ENVIRONMENT = "dev"
-      # Uncomment after the JSON exists in a real bucket (not the empty composed one).
-      # GCS_CONFIG_OBJECT = "ff-freya-superagents-pac/dev/ff-freya-superagents-pac-common.json"
     }
     secret_env_keys = {
       VIA_SUPERAGENT_SECRET = "superagent"

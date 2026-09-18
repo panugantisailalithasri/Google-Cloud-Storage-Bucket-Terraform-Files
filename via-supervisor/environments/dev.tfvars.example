@@ -60,6 +60,17 @@ secrets = {
 # Never put real secret values in this file.
 secret_payloads = {}
 
+# Written to gs://via-supervisor-devsecops-bucket/<object_name>.
+# Leave config_object_payloads empty to upload the stack-generated common.json
+# (no secret values). Set a handle in ADO to replace the body.
+gcs_config_objects = {
+  supervisor = {
+    bucket_key  = "supervisor"
+    object_name = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
+  }
+}
+config_object_payloads = {}
+
 # Two Cloud SQL instances (same split as Production):
 #   sql        — existing sessions/checkpoints (import via name_override)
 #   memory_sql — new pgvector/Mem0 instance (create; no name_override)
@@ -114,11 +125,6 @@ cloud_run_services = {
     env_vars = {
       HOST        = "0.0.0.0"
       ENVIRONMENT = "dev"
-      # Do not set GCS_CONFIG_BUCKET/OBJECT until the JSON exists in that
-      # bucket. The composed via-supervisor-devsecops-bucket is empty; a
-      # missing object crashes the container before it listens on 8000.
-      # config_bucket_name = "existing-shared-config-bucket"
-      # GCS_CONFIG_OBJECT  = "ff-freya-supervisor/dev/ff-freya-supervisor-common.json"
     }
     secret_env_keys = {
       VIA_SUPERVISOR_SECRET = "supervisor"

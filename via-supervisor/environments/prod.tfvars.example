@@ -57,6 +57,14 @@ secrets = {
 # Production secret payloads will come from a prod ADO variable group later.
 secret_payloads = {}
 
+gcs_config_objects = {
+  supervisor = {
+    bucket_key  = "supervisor"
+    object_name = "ff-freya-supervisor/prod/ff-freya-supervisor-common.json"
+  }
+}
+config_object_payloads = {}
+
 sql_instances = {
   sql = {
     resource_name       = "sql"

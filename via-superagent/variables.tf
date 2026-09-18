@@ -105,6 +105,20 @@ variable "secret_payloads" {
   sensitive   = true
 }
 
+variable "gcs_config_objects" {
+  description = "JSON objects Terraform writes into application buckets. Key matches a cloud_run_services handle."
+  type = map(object({
+    bucket_key  = string
+    object_name = string
+  }))
+}
+
+variable "config_object_payloads" {
+  description = "Optional map of gcs_config_objects handle => JSON body. Empty uses the stack-generated common.json. Never commit real secret data."
+  type        = map(string)
+  sensitive   = true
+}
+
 variable "sql_instances" {
   description = "Cloud SQL instances. Instance name is composed as product-env-resource. Set name_override only for pre-existing instances whose GCP name cannot be changed."
   type = map(object({

@@ -44,10 +44,22 @@ if os.environ.get("REQUIRE_SECRET_PAYLOADS", "") == "1":
         print(f"Link variable group {group} to this pipeline and authorize it for the Apply environment.", file=sys.stderr)
         sys.exit(1)
 
+doc = {"secret_payloads": payloads}
+if product == "via-supervisor":
+    gcs = os.environ.get("VIA_SUPERVISOR_GCS_CONFIG", "")
+    if gcs:
+        doc["config_object_payloads"] = {"supervisor": gcs}
+elif product == "via-superagent":
+    gcs = os.environ.get("VIA_SUPERAGENT_GCS_CONFIG", "")
+    if gcs:
+        doc["config_object_payloads"] = {"superagent": gcs}
+
 with open(out_path, "w", encoding="utf-8") as handle:
-    json.dump({"secret_payloads": payloads}, handle, separators=(",", ":"))
+    json.dump(doc, handle, separators=(",", ":"))
 
 print(f"Wrote {len(payloads)} secret payload(s) for keys: {', '.join(sorted(payloads))}")
+if "config_object_payloads" in doc:
+    print("Wrote GCS config object payload(s) for: " + ", ".join(sorted(doc["config_object_payloads"])))
 PY
 
 chmod 600 "$OUT"

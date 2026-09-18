@@ -39,6 +39,38 @@ locals {
 
   # Prefer the conventional "sql" handle; otherwise the first instance.
   primary_sql = length(var.sql_instances) == 0 ? null : try(module.sql["sql"], values(module.sql)[0])
+
+  generated_config_objects = {
+    for key, obj in var.gcs_config_objects : key => jsonencode({
+      product_name            = var.product_name
+      environment             = var.environment
+      project_id              = var.project_id
+      region                  = var.region
+      gcs_config_bucket       = local.bucket_names[obj.bucket_key]
+      gcs_config_object       = obj.object_name
+      runtime_service_account = var.runtime_service_account_email
+      secrets                 = local.secret_names
+      gemini_enterprise       = var.gemini_enterprise
+      observability           = var.observability
+      pac_external            = var.pac_external
+      sql = {
+        for sql_key, inst in module.sql : sql_key => {
+          name            = inst.name
+          connection_name = inst.connection_name
+          private_ip      = inst.private_ip_address
+          databases       = inst.database_names
+        }
+      }
+    })
+  }
+
+  config_object_contents = {
+    for key, obj in var.gcs_config_objects : key => (
+      contains(nonsensitive(keys(var.config_object_payloads)), key) && var.config_object_payloads[key] != ""
+      ? var.config_object_payloads[key]
+      : local.generated_config_objects[key]
+    )
+  }
 }
 
 resource "google_project_service" "required" {
@@ -92,6 +124,15 @@ module "buckets" {
   )
 
   depends_on = [google_project_service.required]
+}
+
+resource "google_storage_bucket_object" "config" {
+  for_each = var.gcs_config_objects
+
+  bucket       = module.buckets[each.value.bucket_key].name
+  name         = each.value.object_name
+  content      = local.config_object_contents[each.key]
+  content_type = "application/json"
 }
 
 module "sql" {
@@ -157,11 +198,14 @@ module "cloud_run" {
       REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
       CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
     },
-    # Only an explicit bucket name is injected. The composed product-env-bucket
-    # is empty until someone uploads the JSON; pointing Cloud Run at it makes
-    # the process exit before it binds PORT.
-    each.value.config_bucket_name == null ? {} : {
-      GCS_CONFIG_BUCKET = each.value.config_bucket_name
+    each.value.config_bucket_name == null && each.value.config_bucket_key == null ? {} : {
+      GCS_CONFIG_BUCKET = coalesce(
+        each.value.config_bucket_name,
+        try(local.bucket_names[each.value.config_bucket_key], null),
+      )
+    },
+    try(var.gcs_config_objects[each.key].object_name, null) == null ? {} : {
+      GCS_CONFIG_OBJECT = var.gcs_config_objects[each.key].object_name
     },
     each.value.session_secret_key == null ? {} : {
       SESSION_SERVICE_SECRET_NAME = local.secret_names[each.value.session_secret_key]
@@ -192,5 +236,6 @@ module "cloud_run" {
     module.secrets,
     module.buckets,
     module.sql,
+    google_storage_bucket_object.config,
   ]
 }

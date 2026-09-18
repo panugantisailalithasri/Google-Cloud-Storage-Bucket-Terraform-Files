@@ -66,7 +66,7 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | Cloud SQL | Supervisor DevSecOps: existing `via-supervisor-devsecops-east4` (sessions) plus new `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`). Superagent has its own SQL instance. Production: supervisor sql + memory-sql |
 | VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
 
-GCS JSON config objects are not uploaded by Terraform. `GCS_CONFIG_BUCKET` is set only when `config_bucket_name` is provided. The composed `product-env-bucket` is created empty; pointing Cloud Run at a missing object makes the process exit before it listens on `PORT`.
+Terraform writes the common JSON into the application bucket (`gcs_config_objects`). DSO supervisor object: `gs://via-supervisor-devsecops-bucket/ff-freya-supervisor/dev/ff-freya-supervisor-common.json`. The body is stack-generated (names, SQL connection info, Gemini/PAC endpoints — no secret values) unless ADO sets `config_object_payloads`. Cloud Run gets `GCS_CONFIG_BUCKET` and `GCS_CONFIG_OBJECT` after that object exists.
 
 Terraform does **not** grant project IAM (for example `roles/cloudsql.client`). The ADO identity `ado-deployer-v3@freyr-ai.iam.gserviceaccount.com` cannot call `resourcemanager.projects.setIamPolicy`. A GCP admin must grant Cloud SQL client (and other project roles) on that existing SA outside this stack.
 

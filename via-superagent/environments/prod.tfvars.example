@@ -55,6 +55,14 @@ secrets = {
 
 secret_payloads = {}
 
+gcs_config_objects = {
+  superagent = {
+    bucket_key  = "superagent"
+    object_name = "ff-freya-superagents-pac/prod/ff-freya-superagents-pac-common.json"
+  }
+}
+config_object_payloads = {}
+
 sql_instances = {
   sql = {
     resource_name       = "sql"
