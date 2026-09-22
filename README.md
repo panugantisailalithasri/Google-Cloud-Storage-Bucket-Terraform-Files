@@ -62,7 +62,7 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | --- | --- |
 | Cloud Run | Supervisor (public invoke; Cognito in-app) and superagent (invoker = supervisor SA) |
 | GCS | One config bucket per product |
-| Secrets | Supervisor/superagent secret, session, memory, cognito |
+| Secrets | Supervisor/superagent secret, session, memory, cognito. DSO session/memory versions are written by Terraform with the new SQL private IP and app-user password (`via_supervisor`, `via_supervisor_memory`, `via_superagent`). |
 | Cloud SQL | Supervisor DevSecOps: `via-supervisor-devsecops-sql` (sessions) and `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`). Superagent has its own SQL instance. Production: supervisor sql + memory-sql |
 | VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
 
@@ -125,7 +125,8 @@ ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatical
 - Buckets: uniform IAM, public access prevention, versioning, no public principals
 - IAM: no service account keys; owner/editor/viewer rejected
 - Secrets: Terraform creates the secret resource only — no payloads in tfvars
-- Superagent Cloud Run is not publicly invokable; only the supervisor SA has `roles/run.invoker`
+- Superagent Cloud Run is not publicly invokable; DSO invoker is `via-supervisor-dso-sa`
+- DSO Cloud Run runtime identities are the existing `via-supervisor-dso-sa` and `via-superagent-dso-sa` (secretAccessor on their secrets, Direct VPC to SQL private IPs)
 - Supervisor Cloud Run allows `allUsers` because Cognito OAuth is enforced in the application
 - Cloud SQL has no public IP; private VPC only
 - State buckets: same private bucket module; `force_destroy` is false

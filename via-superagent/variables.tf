@@ -127,20 +127,22 @@ variable "config_object_payloads" {
 variable "sql_instances" {
   description = "Cloud SQL instances. Instance name is composed as product-env-resource. Set name_override only for pre-existing instances whose GCP name cannot be changed."
   type = map(object({
-    product_name        = optional(string)
-    resource_name       = optional(string)
-    name_override       = optional(string)
-    edition             = optional(string, "ENTERPRISE")
-    database_version    = string
-    tier                = string
-    disk_size_gb        = number
-    databases           = list(string)
-    iam_authentication  = bool
-    pitr_enabled        = bool
-    query_insights      = bool
-    deletion_protection = bool
-    ssl_mode            = string
-    kms_key_name        = optional(string)
+    product_name          = optional(string)
+    resource_name         = optional(string)
+    name_override         = optional(string)
+    edition               = optional(string, "ENTERPRISE")
+    database_version      = string
+    tier                  = string
+    disk_size_gb          = number
+    databases             = list(string)
+    iam_authentication    = bool
+    pitr_enabled          = bool
+    query_insights        = bool
+    deletion_protection   = bool
+    ssl_mode              = string
+    kms_key_name          = optional(string)
+    app_user              = optional(string)
+    connection_secret_key = optional(string)
   }))
 }
 

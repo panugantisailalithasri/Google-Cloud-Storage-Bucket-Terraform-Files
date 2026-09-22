@@ -102,3 +102,9 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "app_user" {
+  description = "Built-in PostgreSQL app user to create. Empty skips user creation."
+  type        = string
+  default     = ""
+}

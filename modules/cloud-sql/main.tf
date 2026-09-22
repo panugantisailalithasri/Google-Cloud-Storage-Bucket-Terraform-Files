@@ -55,3 +55,22 @@ resource "google_sql_database" "this" {
   name     = each.value
   instance = google_sql_database_instance.this.name
 }
+
+resource "random_password" "app" {
+  count = var.app_user != "" ? 1 : 0
+
+  length           = 24
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}:"
+}
+
+resource "google_sql_user" "app" {
+  count = var.app_user != "" ? 1 : 0
+
+  project  = var.project_id
+  instance = google_sql_database_instance.this.name
+  name     = var.app_user
+  password = random_password.app[0].result
+
+  depends_on = [google_sql_database.this]
+}

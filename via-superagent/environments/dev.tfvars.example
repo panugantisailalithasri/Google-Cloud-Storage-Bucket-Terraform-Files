@@ -13,7 +13,7 @@ project_id   = "freyr-ai"
 region       = "us-east4"
 location     = "us-east4"
 
-runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
+runtime_service_account_email = "via-superagent-dso-sa@freyr-ai.iam.gserviceaccount.com"
 
 # Image tag is injected by the pipeline: -var=image_tag=<tag>
 image_tag = "8fdf73f3aa6b54207991baca73b6ee7837f8e335"
@@ -55,7 +55,8 @@ secrets = {
   }
 }
 
-# Payloads come from ADO variable group via-superagent-devsecops-secrets-GCP.
+# App + cognito payloads come from ADO via-superagent-devsecops-secrets-GCP.
+# session JSON is written by Terraform (private IP + via_superagent).
 secret_payloads = {}
 
 gcs_config_objects = {
@@ -78,8 +79,10 @@ sql_instances = {
     pitr_enabled        = true
     query_insights      = true
     deletion_protection = false
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    kms_key_name        = null
+    ssl_mode              = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    kms_key_name          = null
+    app_user              = "via_superagent"
+    connection_secret_key = "superagent_session"
   }
 }
 
@@ -108,7 +111,7 @@ cloud_run_services = {
     extra_secret_env_vars = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false
-    extra_invoker_members = ["serviceAccount:ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"]
+    extra_invoker_members = ["serviceAccount:via-supervisor-dso-sa@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = false
   }
 }

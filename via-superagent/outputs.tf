@@ -43,6 +43,11 @@ output "sql_private_ips" {
   value       = { for key, inst in module.sql : key => inst.private_ip_address }
 }
 
+output "sql_app_users" {
+  description = "Built-in Cloud SQL app users keyed by handle."
+  value       = { for key, inst in module.sql : key => inst.app_user if inst.app_user != "" }
+}
+
 output "cloud_run_uris" {
   description = "Cloud Run URIs keyed by handle."
   value       = { for key, svc in module.cloud_run : key => svc.uri }

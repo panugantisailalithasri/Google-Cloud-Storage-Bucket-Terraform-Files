@@ -92,12 +92,18 @@ module "secrets" {
       accessors = [local.runtime_sa_member]
     }
   }
-  secret_payloads = {
-    for key, payload in var.secret_payloads : local.secret_names[key] => payload
-    if payload != null && payload != ""
-  }
+  secret_payloads = merge(
+    {
+      for key, payload in var.secret_payloads : local.secret_names[key] => payload
+      if payload != null && payload != ""
+    },
+    {
+      for key, inst in var.sql_instances : local.secret_names[inst.connection_secret_key] => module.sql[key].connection_json
+      if inst.connection_secret_key != null && inst.app_user != null && inst.app_user != ""
+    },
+  )
 
-  depends_on = [google_project_service.required]
+  depends_on = [google_project_service.required, module.sql]
 }
 
 module "buckets" {
@@ -167,6 +173,7 @@ module "sql" {
   deletion_protection = each.value.deletion_protection
   kms_key_name        = each.value.kms_key_name
   labels              = local.labels
+  app_user            = coalesce(each.value.app_user, "")
 
   depends_on = [google_project_service.required]
 }

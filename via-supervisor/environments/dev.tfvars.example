@@ -13,7 +13,7 @@ project_id   = "freyr-ai"
 region       = "us-east4"
 location     = "us-east4"
 
-runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
+runtime_service_account_email = "via-supervisor-dso-sa@freyr-ai.iam.gserviceaccount.com"
 
 # Image tag is injected by the pipeline: -var=image_tag=<tag>
 # Set a fallback here for local terraform plan without the pipeline.
@@ -57,8 +57,8 @@ secrets = {
   }
 }
 
-# Payloads for supervisor/session/memory come from ADO variable group
-# via-supervisor-devsecops-secrets-GCP (pipeline injects TF_VAR_secret_payloads).
+# App secret (supervisor) comes from ADO via-supervisor-devsecops-secrets-GCP.
+# session + memory JSON is written by Terraform (private IP + app user).
 # Never put real secret values in this file.
 secret_payloads = {}
 
@@ -92,8 +92,10 @@ sql_instances = {
     pitr_enabled        = true
     query_insights      = true
     deletion_protection = false
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    kms_key_name        = null
+    ssl_mode              = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    kms_key_name          = null
+    app_user              = "via_supervisor"
+    connection_secret_key = "supervisor_session"
   }
   memory_sql = {
     resource_name       = "memory-sql"
@@ -106,8 +108,10 @@ sql_instances = {
     pitr_enabled        = true
     query_insights      = true
     deletion_protection = false
-    ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    kms_key_name        = null
+    ssl_mode              = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    kms_key_name          = null
+    app_user              = "via_supervisor_memory"
+    connection_secret_key = "supervisor_memory"
   }
 }
 

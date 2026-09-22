@@ -23,6 +23,8 @@ if product == "via-supervisor":
         "supervisor_session": os.environ.get("VIA_SUPERVISOR_SESSION", ""),
         "supervisor_memory": os.environ.get("VIA_SUPERVISOR_MEMORY", ""),
     }
+    # Session/memory JSON is written by Terraform from Cloud SQL private IPs + app users.
+    required = ["supervisor"]
     group = "via-supervisor-devsecops-secrets-GCP"
 elif product == "via-superagent":
     mapping = {
@@ -30,6 +32,7 @@ elif product == "via-superagent":
         "superagent_session": os.environ.get("VIA_SUPERAGENT_SESSION", ""),
         "cognito": os.environ.get("VIA_SUPERAGENT_COGNITO", ""),
     }
+    required = ["superagent", "cognito"]
     group = "via-superagent-devsecops-secrets-GCP"
 else:
     print("PRODUCT_NAME must be via-supervisor or via-superagent", file=sys.stderr)
@@ -38,7 +41,7 @@ else:
 payloads = {key: value for key, value in mapping.items() if value}
 
 if os.environ.get("REQUIRE_SECRET_PAYLOADS", "") == "1":
-    missing = [key for key, value in mapping.items() if not value]
+    missing = [key for key in required if not mapping.get(key)]
     if missing:
         print("Missing ADO secret payloads for: " + ", ".join(missing), file=sys.stderr)
         print(f"Link variable group {group} to this pipeline and authorize it for the Apply environment.", file=sys.stderr)
