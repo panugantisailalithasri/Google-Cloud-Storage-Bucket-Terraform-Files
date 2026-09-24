@@ -153,7 +153,7 @@ module "secrets" {
     },
     {
       for key, inst in var.sql_instances : local.secret_names[inst.connection_secret_key] => module.sql[key].connection_json
-      if inst.connection_secret_key != null && inst.app_user != null && inst.app_user != ""
+      if inst.connection_secret_key != null && inst.app_user != null && inst.app_user != "" && !try(var.secrets[inst.connection_secret_key].import_existing, false)
     },
   )
 

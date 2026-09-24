@@ -26,7 +26,9 @@ if product == "via-supervisor":
         "supervisor_memory": os.environ.get("VIA_SUPERVISOR_MEMORY", ""),
     }
     # Session/memory JSON is written by Terraform from Cloud SQL private IPs + app users.
-    # Prod supervisor/secret was created in the console; do not require or rewrite it.
+    # Prod via-supervisor-prod-secret was created in the console — never send it.
+    if secret_env == "prod":
+        mapping.pop("supervisor", None)
     required = [] if secret_env == "prod" else ["supervisor"]
     group = f"via-supervisor-{secret_env}-secrets-GCP"
 elif product == "via-superagent":
@@ -35,7 +37,10 @@ elif product == "via-superagent":
         "superagent_session": os.environ.get("VIA_SUPERAGENT_SESSION", ""),
         "cognito": os.environ.get("VIA_SUPERAGENT_COGNITO", ""),
     }
-    # Prod superagent/cognito were created in the console; do not require or rewrite them.
+    # Prod via-superagent-prod-secret and via-superagent-prod-cognito are console-created.
+    if secret_env == "prod":
+        mapping.pop("superagent", None)
+        mapping.pop("cognito", None)
     required = [] if secret_env == "prod" else ["superagent", "cognito"]
     group = f"via-superagent-{secret_env}-secrets-GCP"
 else:

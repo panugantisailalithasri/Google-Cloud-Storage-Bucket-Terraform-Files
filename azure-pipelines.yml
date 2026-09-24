@@ -186,12 +186,6 @@ stages:
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
               ${{ if eq(parameters.environment, 'prod') }}:
-                VIA_SUPERVISOR_SECRET: $(via-supervisor-prod-secret)
-                VIA_SUPERVISOR_SESSION: $(via-supervisor-prod-session)
-                VIA_SUPERVISOR_MEMORY: $(via-supervisor-prod-memory)
-                VIA_SUPERAGENT_SECRET: $(via-superagent-prod-secret)
-                VIA_SUPERAGENT_SESSION: $(via-superagent-prod-session)
-                VIA_SUPERAGENT_COGNITO: $(via-superagent-prod-cognito)
                 VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-prod-gcs-config)
                 VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-prod-gcs-config)
               ${{ else }}:
@@ -299,12 +293,6 @@ stages:
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
                     ${{ if eq(parameters.environment, 'prod') }}:
-                      VIA_SUPERVISOR_SECRET: $(via-supervisor-prod-secret)
-                      VIA_SUPERVISOR_SESSION: $(via-supervisor-prod-session)
-                      VIA_SUPERVISOR_MEMORY: $(via-supervisor-prod-memory)
-                      VIA_SUPERAGENT_SECRET: $(via-superagent-prod-secret)
-                      VIA_SUPERAGENT_SESSION: $(via-superagent-prod-session)
-                      VIA_SUPERAGENT_COGNITO: $(via-superagent-prod-cognito)
                       VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-prod-gcs-config)
                       VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-prod-gcs-config)
                     ${{ else }}:
