@@ -96,6 +96,34 @@ resource "google_project_service" "required" {
   disable_on_destroy = false
 }
 
+# Cloud SQL private IP needs a Service Networking connection on the VPC.
+# DSO already has this on freya-ai-dev-vpc. Production supervisor creates it
+# on freya-ai-prod-vpc; superagent reuses that connection.
+resource "google_compute_global_address" "private_services" {
+  count = var.private_services_connection.enabled ? 1 : 0
+
+  project       = var.project_id
+  name          = lower(format("%s-%s-sql-peering", var.product_name, var.environment))
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  address       = var.private_services_connection.address
+  prefix_length = var.private_services_connection.prefix_length
+  network       = local.vpc_network_uri
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_service_networking_connection" "private_services" {
+  count = var.private_services_connection.enabled ? 1 : 0
+
+  network                 = local.vpc_network_uri
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_services[0].name]
+  deletion_policy         = "ABANDON"
+
+  depends_on = [google_project_service.required]
+}
+
 module "secrets" {
   source = "../modules/secret-manager"
 
@@ -199,7 +227,10 @@ module "sql" {
   labels              = local.labels
   app_user            = coalesce(each.value.app_user, "")
 
-  depends_on = [google_project_service.required]
+  depends_on = [
+    google_project_service.required,
+    google_service_networking_connection.private_services,
+  ]
 }
 
 # Do not import Cloud Run: failed revisions leave no service to attach.

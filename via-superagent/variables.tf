@@ -78,6 +78,15 @@ variable "cloud_run_direct_vpc" {
   type        = bool
 }
 
+variable "private_services_connection" {
+  description = "When enabled, reserve a VPC peering range and create the Service Networking connection Cloud SQL private IP requires. Enable only on the first stack for a VPC that does not already have this connection."
+  type = object({
+    enabled       = bool
+    address       = string
+    prefix_length = number
+  })
+}
+
 variable "buckets" {
   description = "GCS buckets. Name is composed as product-env-resource. runtime_service_account_email is automatically granted runtime_role."
   type = map(object({

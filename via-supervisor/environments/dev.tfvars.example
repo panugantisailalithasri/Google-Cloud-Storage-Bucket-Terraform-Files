@@ -31,6 +31,12 @@ vpc_subnet  = "freya-ai-dev-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
 # Match existing via-supervisor-dso Networking: Direct VPC, private IPs only.
 cloud_run_direct_vpc = true
+# DSO VPC already has Service Networking. Do not create a second connection.
+private_services_connection = {
+  enabled       = false
+  address       = ""
+  prefix_length = 16
+}
 
 buckets = {
   supervisor = {

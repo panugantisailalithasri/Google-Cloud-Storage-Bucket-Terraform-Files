@@ -29,6 +29,12 @@ vpc_network = "freya-ai-prod-vpc"
 vpc_subnet  = "freya-ai-prod-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
 cloud_run_direct_vpc = true
+# Supervisor prod creates the Service Networking connection on this VPC.
+private_services_connection = {
+  enabled       = false
+  address       = ""
+  prefix_length = 16
+}
 
 buckets = {
   superagent = {
