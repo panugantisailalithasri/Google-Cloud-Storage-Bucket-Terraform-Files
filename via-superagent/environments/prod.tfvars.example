@@ -63,8 +63,9 @@ secrets = {
   }
 }
 
-# App + cognito payloads come from ADO via-superagent-prod-secrets-GCP.
-# session JSON is written by Terraform (private IP + via_superagent).
+# via-superagent-prod-secret and via-superagent-prod-cognito already exist;
+# Terraform imports them and does not add versions. session JSON is written
+# from Cloud SQL.
 secret_payloads = {}
 
 gcs_config_objects = {

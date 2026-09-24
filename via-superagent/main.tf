@@ -132,7 +132,7 @@ module "secrets" {
   secret_payloads = merge(
     {
       for key, payload in var.secret_payloads : local.secret_names[key] => payload
-      if payload != null && payload != ""
+      if payload != null && payload != "" && !try(var.secrets[key].import_existing, false)
     },
     {
       for key, inst in var.sql_instances : local.secret_names[inst.connection_secret_key] => module.sql[key].connection_json

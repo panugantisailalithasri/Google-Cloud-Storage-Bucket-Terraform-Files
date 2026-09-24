@@ -64,8 +64,8 @@ secrets = {
   }
 }
 
-# App secret comes from ADO via-supervisor-prod-secrets-GCP.
-# session + memory JSON is written by Terraform (private IP + app user).
+# via-supervisor-prod-secret already exists in GCP; Terraform imports it and
+# does not add a version. session + memory JSON is written from Cloud SQL.
 secret_payloads = {}
 
 gcs_config_objects = {
