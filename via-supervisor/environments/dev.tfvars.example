@@ -83,9 +83,9 @@ config_object_payloads = {}
 sql_instances = {
   sql = {
     resource_name       = "sql"
-    edition             = "ENTERPRISE_PLUS"
+    edition             = "ENTERPRISE"
     database_version    = "POSTGRES_18"
-    tier                = "db-perf-optimized-N-2"
+    tier                = "db-custom-2-4096"
     disk_size_gb        = 10
     databases           = ["ff-freya-supervisor-pac-adk", "ff-freya-supervisor-pac-langgraph"]
     iam_authentication  = true
@@ -99,10 +99,12 @@ sql_instances = {
   }
   memory_sql = {
     resource_name       = "memory-sql"
-    edition             = "ENTERPRISE_PLUS"
+    edition             = "ENTERPRISE"
     database_version    = "POSTGRES_18"
-    tier                = "db-perf-optimized-N-2"
-    disk_size_gb        = 100
+    tier                = "db-custom-2-8192"
+    # Cloud SQL cannot shrink disk in place. If this instance already exists at
+    # 100 GB, replace it on apply (deletion_protection is false in DSO).
+    disk_size_gb        = 53
     databases           = ["mem0_db"]
     iam_authentication  = true
     pitr_enabled        = true

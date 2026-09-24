@@ -71,6 +71,7 @@ config_object_payloads = {}
 sql_instances = {
   sql = {
     resource_name       = "sql"
+    edition             = "ENTERPRISE"
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-4096"
     disk_size_gb        = 10

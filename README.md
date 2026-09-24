@@ -63,7 +63,7 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | Cloud Run | Supervisor (public invoke; Cognito in-app) and superagent (invoker = supervisor SA) |
 | GCS | One config bucket per product |
 | Secrets | Supervisor/superagent secret, session, memory, cognito. DSO session/memory versions are written by Terraform with the new SQL private IP and app-user password (`via_supervisor`, `via_supervisor_memory`, `via_superagent`). |
-| Cloud SQL | Supervisor DevSecOps: `via-supervisor-devsecops-sql` (sessions) and `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`). Superagent has its own SQL instance. Production: supervisor sql + memory-sql |
+| Cloud SQL | All instances are **ENTERPRISE** (not ENTERPRISE_PLUS). Supervisor DevSecOps: `via-supervisor-devsecops-sql` (sessions, 10 GB) and `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`, 53 GB). Superagent has its own SQL instance. Production: supervisor sql + memory-sql (53 GB). Cloud SQL cannot shrink disk in place — if memory-sql already exists at 100 GB, replace that instance on apply. |
 | VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
 
 Terraform writes the common JSON into the application bucket (`gcs_config_objects`). DSO supervisor object: `gs://via-supervisor-devsecops-bucket/ff-freya-supervisor/dev/ff-freya-supervisor-common.json`. The body is stack-generated (names, SQL connection info, Gemini/PAC endpoints — no secret values) unless ADO sets `config_object_payloads`. Cloud Run gets `GCS_CONFIG_BUCKET` and `GCS_CONFIG_OBJECT` after that object exists.
