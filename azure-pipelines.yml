@@ -168,6 +168,8 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
+              bash "$(Build.SourcesDirectory)/scripts/untaint-cloud-run.sh" "$STACK"
+
               EXTRA_VAR_FILE_ARGS=()
               if { [ "$(environment)" = "dev" ] || [ "$(environment)" = "prod" ]; } && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
@@ -274,6 +276,8 @@ stages:
                     terraform -chdir="$STACK" init -reconfigure \
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
+
+                    bash "$(Build.SourcesDirectory)/scripts/untaint-cloud-run.sh" "$STACK"
 
                     EXTRA_VAR_FILE_ARGS=()
                     if { [ "$(environment)" = "dev" ] || [ "$(environment)" = "prod" ]; } && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then

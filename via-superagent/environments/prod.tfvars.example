@@ -115,6 +115,7 @@ cloud_run_services = {
     allow_unauthenticated = false
     extra_invoker_members = ["serviceAccount:via-supervisor-dso-sa@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = true
+    import_existing       = true
   }
 }
 

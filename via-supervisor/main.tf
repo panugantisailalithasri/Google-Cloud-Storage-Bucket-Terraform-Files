@@ -254,9 +254,16 @@ module "sql" {
   ]
 }
 
-# Do not import Cloud Run: failed revisions leave no service to attach.
-# Apply creates via-supervisor-<env>-run. If a live service is later
-# adopted, add an import block only while that GCP name exists.
+# Import an already-created Cloud Run service (prod). to= uses each.key only.
+import {
+  for_each = {
+    for key, svc in var.cloud_run_services : key => svc
+    if svc.import_existing
+  }
+  to = module.cloud_run[each.key].google_cloud_run_v2_service.this
+  id = "projects/${var.project_id}/locations/${var.region}/services/${local.cloud_run_names[each.key]}"
+}
+
 module "cloud_run" {
   source   = "../modules/cloud-run"
   for_each = var.cloud_run_services

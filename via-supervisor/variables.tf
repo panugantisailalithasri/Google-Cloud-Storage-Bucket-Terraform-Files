@@ -182,6 +182,7 @@ variable "cloud_run_services" {
     allow_unauthenticated = bool
     extra_invoker_members = list(string)
     deletion_protection   = bool
+    import_existing       = optional(bool, false)
   }))
 }
 

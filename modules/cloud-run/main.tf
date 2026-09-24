@@ -1,10 +1,11 @@
 resource "google_cloud_run_v2_service" "this" {
-  name                = var.name
-  project             = var.project_id
-  location            = var.location
-  ingress             = var.ingress
-  deletion_protection = var.deletion_protection
-  labels              = var.labels
+  name                 = var.name
+  project              = var.project_id
+  location             = var.location
+  ingress              = var.ingress
+  deletion_protection  = var.deletion_protection
+  labels               = var.labels
+  invoker_iam_disabled = false
 
   template {
     service_account                  = var.service_account_email

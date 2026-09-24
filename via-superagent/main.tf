@@ -240,6 +240,15 @@ module "sql" {
   ]
 }
 
+import {
+  for_each = {
+    for key, svc in var.cloud_run_services : key => svc
+    if svc.import_existing
+  }
+  to = module.cloud_run[each.key].google_cloud_run_v2_service.this
+  id = "projects/${var.project_id}/locations/${var.region}/services/${local.cloud_run_names[each.key]}"
+}
+
 module "cloud_run" {
   source   = "../modules/cloud-run"
   for_each = var.cloud_run_services
