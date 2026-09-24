@@ -168,12 +168,7 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
-              if [ "$(productName)" = "via-supervisor" ]; then
-                bash "$(Build.SourcesDirectory)/scripts/drop-east4-sql-from-state.sh" "$STACK"
-              fi
-
               EXTRA_VAR_FILE_ARGS=()
-              REPLACE_ARGS=()
               if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
                 export PRODUCT_NAME="$(productName)"
@@ -181,17 +176,11 @@ stages:
                 bash "$(Build.SourcesDirectory)/scripts/export-tf-secret-payloads.sh" "$PAYLOAD_FILE"
                 EXTRA_VAR_FILE_ARGS+=(-var-file="$PAYLOAD_FILE")
               fi
-              if [ "$(productName)" = "via-supervisor" ]; then
-                while IFS= read -r addr; do
-                  [ -n "$addr" ] && REPLACE_ARGS+=("-replace=${addr}")
-                done < <(bash "$(Build.SourcesDirectory)/scripts/replace-memory-sql-if-needed.sh" "$STACK")
-              fi
 
               terraform -chdir="$STACK" plan \
                 -var-file="environments/$(basename "$ENV_FILE")" \
                 -var="product_name=$(productName)" \
-                "${EXTRA_VAR_FILE_ARGS[@]}" \
-                "${REPLACE_ARGS[@]}"
+                "${EXTRA_VAR_FILE_ARGS[@]}"
             displayName: Terraform init and plan
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
@@ -286,12 +275,7 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
-                    if [ "$(productName)" = "via-supervisor" ]; then
-                      bash "$(Build.SourcesDirectory)/scripts/drop-east4-sql-from-state.sh" "$STACK"
-                    fi
-
                     EXTRA_VAR_FILE_ARGS=()
-                    REPLACE_ARGS=()
                     if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                       export REQUIRE_SECRET_PAYLOADS=1
                       export PRODUCT_NAME="$(productName)"
@@ -299,17 +283,11 @@ stages:
                       bash "$(Build.SourcesDirectory)/scripts/export-tf-secret-payloads.sh" "$PAYLOAD_FILE"
                       EXTRA_VAR_FILE_ARGS+=(-var-file="$PAYLOAD_FILE")
                     fi
-                    if [ "$(productName)" = "via-supervisor" ]; then
-                      while IFS= read -r addr; do
-                        [ -n "$addr" ] && REPLACE_ARGS+=("-replace=${addr}")
-                      done < <(bash "$(Build.SourcesDirectory)/scripts/replace-memory-sql-if-needed.sh" "$STACK")
-                    fi
 
                     terraform -chdir="$STACK" apply -auto-approve \
                       -var-file="environments/$(basename "$ENV_FILE")" \
                       -var="product_name=$(productName)" \
-                      "${EXTRA_VAR_FILE_ARGS[@]}" \
-                      "${REPLACE_ARGS[@]}"
+                      "${EXTRA_VAR_FILE_ARGS[@]}"
                   displayName: Terraform apply
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig

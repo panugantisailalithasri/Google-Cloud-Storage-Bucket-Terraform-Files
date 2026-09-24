@@ -74,12 +74,7 @@ gcs_config_objects = {
 config_object_payloads = {}
 
 # Two Cloud SQL instances, both created with product-env-resource names.
-# via-supervisor-devsecops-east4 is not managed here (left in GCP unused).
-# If state still has east4 at module.sql["sql"], run before apply:
-#   terraform state rm 'module.sql["sql"].google_sql_database_instance.this'
-#   terraform state rm 'module.sql["sql"].google_sql_database.this["ff-freya-supervisor-pac-adk"]'
-#   terraform state rm 'module.sql["sql"].google_sql_database.this["ff-freya-supervisor-pac-langgraph"]'
-# so apply creates via-supervisor-devsecops-sql and does not destroy east4.
+# via-supervisor-devsecops-east4 is not managed here.
 sql_instances = {
   sql = {
     resource_name       = "sql"
@@ -102,7 +97,6 @@ sql_instances = {
     edition             = "ENTERPRISE"
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-8192"
-    # Pipeline replaces this instance if state still has 100 GB / ENTERPRISE_PLUS.
     disk_size_gb        = 53
     databases           = ["mem0_db"]
     iam_authentication  = true
