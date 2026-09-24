@@ -16,6 +16,8 @@ import sys
 
 out_path = sys.argv[1]
 product = os.environ.get("PRODUCT_NAME", "")
+pipeline_env = os.environ.get("ENVIRONMENT", "dev")
+secret_env = "prod" if pipeline_env == "prod" else "devsecops"
 
 if product == "via-supervisor":
     mapping = {
@@ -25,7 +27,7 @@ if product == "via-supervisor":
     }
     # Session/memory JSON is written by Terraform from Cloud SQL private IPs + app users.
     required = ["supervisor"]
-    group = "via-supervisor-devsecops-secrets-GCP"
+    group = f"via-supervisor-{secret_env}-secrets-GCP"
 elif product == "via-superagent":
     mapping = {
         "superagent": os.environ.get("VIA_SUPERAGENT_SECRET", ""),
@@ -33,7 +35,7 @@ elif product == "via-superagent":
         "cognito": os.environ.get("VIA_SUPERAGENT_COGNITO", ""),
     }
     required = ["superagent", "cognito"]
-    group = "via-superagent-devsecops-secrets-GCP"
+    group = f"via-superagent-{secret_env}-secrets-GCP"
 else:
     print("PRODUCT_NAME must be via-supervisor or via-superagent", file=sys.stderr)
     sys.exit(1)

@@ -48,10 +48,16 @@ variables:
     value: "711982279551"
   - name: gcpRegion
     value: us-east4
-  - name: gcpVpc
-    value: freya-ai-dev-vpc
-  - name: gcpSubnet
-    value: freya-ai-dev-subnet-us-east4
+  - ${{ if eq(parameters.environment, 'prod') }}:
+    - name: gcpVpc
+      value: freya-ai-prod-vpc
+    - name: gcpSubnet
+      value: freya-ai-prod-subnet-us-east4
+  - ${{ else }}:
+    - name: gcpVpc
+      value: freya-ai-dev-vpc
+    - name: gcpSubnet
+      value: freya-ai-dev-subnet-us-east4
   - name: gcpPoolId
     value: azure-devops-pool-v3
   - name: gcpProviderId
@@ -60,8 +66,12 @@ variables:
     value: ado-deployer-v3@freyr-ai.iam.gserviceaccount.com
   - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
     - group: via-supervisor-devsecops-secrets-GCP
+  - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'prod')) }}:
+    - group: via-supervisor-prod-secrets-GCP
   - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
     - group: via-superagent-devsecops-secrets-GCP
+  - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'prod')) }}:
+    - group: via-superagent-prod-secrets-GCP
 
 pool:
   vmImage: ubuntu-latest
@@ -100,8 +110,12 @@ stages:
         variables:
           - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
             - group: via-supervisor-devsecops-secrets-GCP
+          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'prod')) }}:
+            - group: via-supervisor-prod-secrets-GCP
           - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
             - group: via-superagent-devsecops-secrets-GCP
+          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'prod')) }}:
+            - group: via-superagent-prod-secrets-GCP
         steps:
           - checkout: self
           - bash: |
@@ -169,9 +183,10 @@ stages:
                 -backend-config="prefix=$(statePrefix)"
 
               EXTRA_VAR_FILE_ARGS=()
-              if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
+              if { [ "$(environment)" = "dev" ] || [ "$(environment)" = "prod" ]; } && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
                 export PRODUCT_NAME="$(productName)"
+                export ENVIRONMENT="$(environment)"
                 PAYLOAD_FILE="$(Pipeline.Workspace)/secret_payloads.tfvars.json"
                 bash "$(Build.SourcesDirectory)/scripts/export-tf-secret-payloads.sh" "$PAYLOAD_FILE"
                 EXTRA_VAR_FILE_ARGS+=(-var-file="$PAYLOAD_FILE")
@@ -184,14 +199,24 @@ stages:
             displayName: Terraform init and plan
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
-              VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
-              VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
-              VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
-              VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
-              VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
-              VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
-              VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-devsecops-gcs-config)
-              VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-devsecops-gcs-config)
+              ${{ if eq(parameters.environment, 'prod') }}:
+                VIA_SUPERVISOR_SECRET: $(via-supervisor-prod-secret)
+                VIA_SUPERVISOR_SESSION: $(via-supervisor-prod-session)
+                VIA_SUPERVISOR_MEMORY: $(via-supervisor-prod-memory)
+                VIA_SUPERAGENT_SECRET: $(via-superagent-prod-secret)
+                VIA_SUPERAGENT_SESSION: $(via-superagent-prod-session)
+                VIA_SUPERAGENT_COGNITO: $(via-superagent-prod-cognito)
+                VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-prod-gcs-config)
+                VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-prod-gcs-config)
+              ${{ else }}:
+                VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
+                VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
+                VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
+                VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
+                VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
+                VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
+                VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-devsecops-gcs-config)
+                VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-devsecops-gcs-config)
 
   - stage: Apply
     displayName: Terraform apply
@@ -204,8 +229,12 @@ stages:
         variables:
           - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
             - group: via-supervisor-devsecops-secrets-GCP
+          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'prod')) }}:
+            - group: via-supervisor-prod-secrets-GCP
           - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
             - group: via-superagent-devsecops-secrets-GCP
+          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'prod')) }}:
+            - group: via-superagent-prod-secrets-GCP
         strategy:
           runOnce:
             deploy:
@@ -276,9 +305,10 @@ stages:
                       -backend-config="prefix=$(statePrefix)"
 
                     EXTRA_VAR_FILE_ARGS=()
-                    if [ "$(environment)" = "dev" ] && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
+                    if { [ "$(environment)" = "dev" ] || [ "$(environment)" = "prod" ]; } && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                       export REQUIRE_SECRET_PAYLOADS=1
                       export PRODUCT_NAME="$(productName)"
+                      export ENVIRONMENT="$(environment)"
                       PAYLOAD_FILE="$(Pipeline.Workspace)/secret_payloads.tfvars.json"
                       bash "$(Build.SourcesDirectory)/scripts/export-tf-secret-payloads.sh" "$PAYLOAD_FILE"
                       EXTRA_VAR_FILE_ARGS+=(-var-file="$PAYLOAD_FILE")
@@ -291,14 +321,24 @@ stages:
                   displayName: Terraform apply
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(Pipeline.Workspace)/.workload_identity.wlconfig
-                    VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
-                    VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
-                    VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
-                    VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
-                    VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
-                    VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
-                    VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-devsecops-gcs-config)
-                    VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-devsecops-gcs-config)
+                    ${{ if eq(parameters.environment, 'prod') }}:
+                      VIA_SUPERVISOR_SECRET: $(via-supervisor-prod-secret)
+                      VIA_SUPERVISOR_SESSION: $(via-supervisor-prod-session)
+                      VIA_SUPERVISOR_MEMORY: $(via-supervisor-prod-memory)
+                      VIA_SUPERAGENT_SECRET: $(via-superagent-prod-secret)
+                      VIA_SUPERAGENT_SESSION: $(via-superagent-prod-session)
+                      VIA_SUPERAGENT_COGNITO: $(via-superagent-prod-cognito)
+                      VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-prod-gcs-config)
+                      VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-prod-gcs-config)
+                    ${{ else }}:
+                      VIA_SUPERVISOR_SECRET: $(via-supervisor-devsecops-secret)
+                      VIA_SUPERVISOR_SESSION: $(via-supervisor-devsecops-session)
+                      VIA_SUPERVISOR_MEMORY: $(via-supervisor-devsecops-memory)
+                      VIA_SUPERAGENT_SECRET: $(via-superagent-devsecops-secret)
+                      VIA_SUPERAGENT_SESSION: $(via-superagent-devsecops-session)
+                      VIA_SUPERAGENT_COGNITO: $(via-superagent-devsecops-cognito)
+                      VIA_SUPERVISOR_GCS_CONFIG: $(via-supervisor-devsecops-gcs-config)
+                      VIA_SUPERAGENT_GCS_CONFIG: $(via-superagent-devsecops-gcs-config)
                 - bash: |
                     set +e
                     export GOOGLE_APPLICATION_CREDENTIALS="$(Pipeline.Workspace)/.workload_identity.wlconfig"

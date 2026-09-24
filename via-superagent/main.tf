@@ -154,6 +154,16 @@ resource "google_storage_bucket_object" "config" {
   content_type = "application/json"
 }
 
+# Import secrets that already exist in GCP (console-created). New secrets are created.
+import {
+  for_each = {
+    for key, secret in var.secrets : key => secret
+    if secret.import_existing
+  }
+  to = module.secrets.google_secret_manager_secret.this[local.secret_names[each.key]]
+  id = "projects/${var.project_id}/secrets/${local.secret_names[each.key]}"
+}
+
 module "sql" {
   source   = "../modules/cloud-sql"
   for_each = var.sql_instances

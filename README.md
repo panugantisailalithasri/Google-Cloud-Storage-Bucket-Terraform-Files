@@ -62,9 +62,9 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | --- | --- |
 | Cloud Run | Supervisor (public invoke; Cognito in-app) and superagent (invoker = supervisor SA) |
 | GCS | One config bucket per product |
-| Secrets | Supervisor/superagent secret, session, memory, cognito. DSO session/memory versions are written by Terraform with the new SQL private IP and app-user password (`via_supervisor`, `via_supervisor_memory`, `via_superagent`). |
+| Secrets | Supervisor/superagent secret, session, memory, cognito. Session/memory versions are written by Terraform with the SQL private IP and app-user password (`via_supervisor`, `via_supervisor_memory`, `via_superagent`). Production imports console-created `via-supervisor-prod-secret`, `via-superagent-prod-secret`, and `via-superagent-prod-cognito`. |
 | Cloud SQL | All instances are **ENTERPRISE** (not ENTERPRISE_PLUS). Supervisor DevSecOps: `via-supervisor-devsecops-sql` (sessions, 10 GB) and `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`, 53 GB). Superagent has its own SQL instance. Production: supervisor sql + memory-sql (53 GB). |
-| VPC / subnet | `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` |
+| VPC / subnet | DevSecOps: `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4`. Production: `freya-ai-prod-vpc` / `freya-ai-prod-subnet-us-east4` (`10.150.0.0/20`, already in GCP). |
 
 Terraform writes the common JSON into the application bucket (`gcs_config_objects`). DSO supervisor object: `gs://via-supervisor-devsecops-bucket/ff-freya-supervisor/dev/ff-freya-supervisor-common.json`. The body is stack-generated (names, SQL connection info, Gemini/PAC endpoints — no secret values) unless ADO sets `config_object_payloads`. Cloud Run env matches the live DSO services: supervisor `VIA_CONFIG_BACKEND` / `GOOGLE_CLOUD_PROJECT` / `GOOGLE_CLOUD_LOCATION` / `AGENT_URL` / `CONFIG_RELOAD_ID`; superagent `PAC_CONFIG_BACKEND` / `GOOGLE_CLOUD_PROJECT` / `GOOGLE_CLOUD_LOCATION` / `CONFIG_RELOAD_ID`. Everything else is read from that GCS JSON.
 
@@ -118,15 +118,15 @@ cp backend.hcl.example backend.hcl   # bucket = via-supervisor-tfstate, prefix =
 terraform init -backend-config=backend.hcl
 ```
 
-ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically, and passes `-var=product_name=$(productName)` so names follow the pipeline product. Pipeline variables also record DSO project `freyr-ai`, region `us-east4`, VPC `freya-ai-dev-vpc`, and subnet `freya-ai-dev-subnet-us-east4`.
+ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatically, and passes `-var=product_name=$(productName)` so names follow the pipeline product. Pipeline variables record project `freyr-ai`, region `us-east4`, and the env VPC/subnet (`freya-ai-dev-vpc` or `freya-ai-prod-vpc`).
 
 ## Security defaults
 
 - Buckets: uniform IAM, public access prevention, versioning, no public principals
 - IAM: no service account keys; owner/editor/viewer rejected
 - Secrets: Terraform creates the secret resource only — no payloads in tfvars
-- Superagent Cloud Run is not publicly invokable; DSO invoker is `via-supervisor-dso-sa`
-- DSO Cloud Run runtime identities are the existing `via-supervisor-dso-sa` and `via-superagent-dso-sa` (secretAccessor on their secrets, Direct VPC to SQL private IPs)
+- Superagent Cloud Run is not publicly invokable; invoker is `via-supervisor-dso-sa`
+- Cloud Run runtime identities are the existing `via-supervisor-dso-sa` and `via-superagent-dso-sa` (secretAccessor on their secrets, Direct VPC to SQL private IPs)
 - Supervisor Cloud Run allows `allUsers` because Cognito OAuth is enforced in the application
 - Cloud SQL has no public IP; private VPC only
 - State buckets: same private bucket module; `force_destroy` is false
@@ -170,8 +170,9 @@ The pipeline uses the ARM service connection `GCP_freyrai_service_role` to mint 
 1. Create a pipeline from `azure-pipelines.yml`.
 2. Ensure the ARM service connection `GCP_freyrai_service_role` exists and this pipeline is allowed to use it.
 3. Create ADO environments `gcp-dev` and `gcp-prod` (approval on prod).
-4. Create the agent state bucket (`<productName>-tfstate`) once via `remote-backend/` before the first plan.
-5. Run with:
+4. Create Library groups `via-supervisor-devsecops-secrets-GCP` / `via-superagent-devsecops-secrets-GCP` and `via-supervisor-prod-secrets-GCP` / `via-superagent-prod-secrets-GCP`. Authorize each group for the matching `gcp-dev` or `gcp-prod` environment. Prod required variables: `via-supervisor-prod-secret`; `via-superagent-prod-secret` and `via-superagent-prod-cognito`. Session/memory are optional — Terraform writes those from Cloud SQL.
+5. Create the agent state bucket (`<productName>-tfstate`) once via `remote-backend/` before the first plan.
+6. Run with:
    - `productName`: agent folder (`via-supervisor`) → state bucket `via-supervisor-tfstate` and first name segment
    - `environment`: `dev` (DevSecOps tfvars) or `prod` (Production tfvars) → state prefix
    - `action`: `plan` or `apply`

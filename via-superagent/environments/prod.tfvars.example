@@ -12,7 +12,7 @@ project_id   = "freyr-ai"
 region       = "us-east4"
 location     = "us-east4"
 
-runtime_service_account_email = "ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"
+runtime_service_account_email = "via-superagent-dso-sa@freyr-ai.iam.gserviceaccount.com"
 
 # Image tag is injected by the pipeline: -var=image_tag=<tag>
 image_tag = "prod"
@@ -24,8 +24,9 @@ labels = {
 
 enable_apis = true
 
-vpc_network = "freya-ai-dev-vpc"
-vpc_subnet  = "freya-ai-dev-subnet-us-east4"
+# Existing prod VPC. Subnet CIDR 10.150.0.0/20 is already in GCP.
+vpc_network = "freya-ai-prod-vpc"
+vpc_subnet  = "freya-ai-prod-subnet-us-east4"
 vpc_egress  = "PRIVATE_RANGES_ONLY"
 cloud_run_direct_vpc = true
 
@@ -44,16 +45,20 @@ buckets = {
 
 secrets = {
   superagent = {
-    resource_name = "secret"
+    resource_name   = "secret"
+    import_existing = true
   }
   superagent_session = {
     resource_name = "session"
   }
   cognito = {
-    resource_name = "cognito"
+    resource_name   = "cognito"
+    import_existing = true
   }
 }
 
+# App + cognito payloads come from ADO via-superagent-prod-secrets-GCP.
+# session JSON is written by Terraform (private IP + via_superagent).
 secret_payloads = {}
 
 gcs_config_objects = {
@@ -78,6 +83,8 @@ sql_instances = {
     deletion_protection = true
     ssl_mode            = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
     kms_key_name        = null
+    app_user              = "via_superagent"
+    connection_secret_key = "superagent_session"
   }
 }
 
@@ -99,7 +106,7 @@ cloud_run_services = {
     extra_secret_env_vars = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false
-    extra_invoker_members = ["serviceAccount:ado-deployer-v3@freyr-ai.iam.gserviceaccount.com"]
+    extra_invoker_members = ["serviceAccount:via-supervisor-dso-sa@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = true
   }
 }

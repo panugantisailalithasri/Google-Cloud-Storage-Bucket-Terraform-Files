@@ -97,10 +97,11 @@ variable "buckets" {
 }
 
 variable "secrets" {
-  description = "Secret Manager secrets. secret_id is composed as product-env-resource. runtime_service_account_email is automatically granted secretAccessor."
+  description = "Secret Manager secrets. secret_id is composed as product-env-resource. runtime_service_account_email is automatically granted secretAccessor. Set import_existing for secrets already created in GCP."
   type = map(object({
-    product_name  = optional(string)
-    resource_name = optional(string)
+    product_name    = optional(string)
+    resource_name   = optional(string)
+    import_existing = optional(bool, false)
   }))
 }
 
