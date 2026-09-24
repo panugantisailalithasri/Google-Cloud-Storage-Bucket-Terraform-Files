@@ -3,6 +3,10 @@
 # GCP names are composed in naming.tf as productname-ENVname-Resourcename.
 # Cloud Run runtime identity = var.runtime_service_account_email (existing SA, no SA created here).
 
+data "google_project" "this" {
+  project_id = var.project_id
+}
+
 locals {
   location = var.location
 
@@ -40,12 +44,20 @@ locals {
   # Prefer the conventional "sql" handle; otherwise the first instance.
   primary_sql = length(var.sql_instances) == 0 ? null : try(module.sql["sql"], values(module.sql)[0])
 
+  cloud_run_urls = {
+    for key, svc in var.cloud_run_services :
+    key => "https://${local.cloud_run_names[key]}-${data.google_project.this.number}.${var.region}.run.app"
+  }
+
   generated_config_objects = {
     for key, obj in var.gcs_config_objects : key => jsonencode({
       product_name            = var.product_name
       environment             = var.environment
       project_id              = var.project_id
       region                  = var.region
+      config_backend          = "gcp"
+      config_reload_id        = var.image_tag
+      agent_url               = try(local.cloud_run_urls[key], null)
       gcs_config_bucket       = local.bucket_names[obj.bucket_key]
       gcs_config_object       = obj.object_name
       runtime_service_account = var.runtime_service_account_email
@@ -58,6 +70,7 @@ locals {
           name            = inst.name
           connection_name = inst.connection_name
           private_ip      = inst.private_ip_address
+          unix_socket     = "/cloudsql/${inst.connection_name}"
           databases       = inst.database_names
         }
       }
@@ -188,49 +201,14 @@ module "cloud_run" {
   command               = each.value.command
   args                  = each.value.args
   cloud_sql_instances   = [for inst in module.sql : inst.connection_name]
+  # Match live via-superagent-dso: only these env vars. Everything else is in GCS JSON.
   env_vars = merge(
     {
-      HOST                        = "0.0.0.0"
-      GOOGLE_CLOUD_PROJECT        = var.project_id
-      GOOGLE_CLOUD_LOCATION       = var.region
-      GOOGLE_CLOUD_REGION         = var.region
-      VERTEX_LOCATION             = var.region
-      CLOUD_ML_REGION             = var.region
-      PRODUCT_NAME                = coalesce(each.value.product_name, var.product_name)
-      ENVIRONMENT                 = var.environment
-      RESOURCE_NAME               = local.cloud_run_names[each.key]
-      GEMINI_ENTERPRISE_APP_ID    = var.gemini_enterprise.application_id
-      VIA_AGENT_ID                = var.gemini_enterprise.via_agent_id
-      VIA_AGENT_DISPLAY_NAME      = var.gemini_enterprise.agent_display_name
-      VIA_TRACING_ENABLED         = tostring(var.observability.via_tracing_enabled)
-      PAC_TRACING_ENABLED         = tostring(var.observability.pac_tracing_enabled)
-      OTEL_EXPORTER_OTLP_ENDPOINT = var.observability.traces_endpoint
-      REGULATORY_MCP_URL          = var.pac_external.regulatory_mcp
-      CONCEPT_GRAPH_URL           = var.pac_external.concept_graph
+      PAC_CONFIG_BACKEND    = "gcp"
+      GOOGLE_CLOUD_PROJECT  = var.project_id
+      GOOGLE_CLOUD_LOCATION = var.region
+      CONFIG_RELOAD_ID      = var.image_tag
     },
-    each.value.config_bucket_name == null && each.value.config_bucket_key == null ? {} : {
-      GCS_CONFIG_BUCKET = coalesce(
-        each.value.config_bucket_name,
-        try(local.bucket_names[each.value.config_bucket_key], null),
-      )
-    },
-    try(var.gcs_config_objects[each.key].object_name, null) == null ? {} : {
-      GCS_CONFIG_OBJECT = var.gcs_config_objects[each.key].object_name
-    },
-    each.value.session_secret_key == null ? {} : {
-      SESSION_SERVICE_SECRET_NAME = local.secret_names[each.value.session_secret_key]
-    },
-    each.value.memory_secret_key == null ? {} : {
-      MEMORY_SERVICE_SECRET_NAME = local.secret_names[each.value.memory_secret_key]
-    },
-    local.primary_sql == null ? {} : merge(
-      {
-        CLOUD_SQL_CONNECTION_NAME = local.primary_sql.connection_name
-        INSTANCE_UNIX_SOCKET      = "/cloudsql/${local.primary_sql.connection_name}"
-      },
-      var.cloud_run_direct_vpc ? { DB_HOST = local.primary_sql.private_ip_address } : {},
-    ),
-    # tfvars win so HOST / GCS_CONFIG_BUCKET / ENVIRONMENT can be overridden.
     each.value.env_vars,
   )
   secret_env_vars = merge(

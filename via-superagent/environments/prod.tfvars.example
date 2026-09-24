@@ -94,14 +94,8 @@ cloud_run_services = {
     max_instances         = 3
     concurrency           = 320
     timeout_seconds       = 300
-    env_vars = {
-      HOST = "0.0.0.0"
-    }
-    secret_env_keys = {
-      VIA_SUPERAGENT_SECRET = "superagent"
-      VIA_SESSION_SECRET    = "superagent_session"
-      VIA_COGNITO_M2M       = "cognito"
-    }
+    env_vars              = {}
+    secret_env_keys       = {}
     extra_secret_env_vars = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = false

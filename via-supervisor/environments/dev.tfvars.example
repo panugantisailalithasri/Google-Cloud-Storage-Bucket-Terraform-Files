@@ -102,8 +102,7 @@ sql_instances = {
     edition             = "ENTERPRISE"
     database_version    = "POSTGRES_18"
     tier                = "db-custom-2-8192"
-    # Cloud SQL cannot shrink disk in place. If this instance already exists at
-    # 100 GB, replace it on apply (deletion_protection is false in DSO).
+    # Pipeline replaces this instance if state still has 100 GB / ENTERPRISE_PLUS.
     disk_size_gb        = 53
     databases           = ["mem0_db"]
     iam_authentication  = true
@@ -131,15 +130,10 @@ cloud_run_services = {
     max_instances         = 3
     concurrency           = 320
     timeout_seconds       = 300
-    env_vars = {
-      HOST        = "0.0.0.0"
-      ENVIRONMENT = "dev"
-    }
-    secret_env_keys = {
-      VIA_SUPERVISOR_SECRET = "supervisor"
-      VIA_SESSION_SECRET    = "supervisor_session"
-      VIA_MEMORY_SECRET     = "supervisor_memory"
-    }
+    # Cloud Run env matches live via-supervisor-dso. Remaining settings come
+    # from the GCS JSON (VIA_CONFIG_BACKEND=gcp). Do not add HOST/PORT/secrets.
+    env_vars        = {}
+    secret_env_keys = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
     extra_invoker_members = []

@@ -111,15 +111,8 @@ cloud_run_services = {
     max_instances         = 3
     concurrency           = 320
     timeout_seconds       = 300
-    env_vars = {
-      HOST = "0.0.0.0"
-      # Set config_bucket_name + GCS_CONFIG_OBJECT after the JSON is uploaded.
-    }
-    secret_env_keys = {
-      VIA_SUPERVISOR_SECRET = "supervisor"
-      VIA_SESSION_SECRET    = "supervisor_session"
-      VIA_MEMORY_SECRET     = "supervisor_memory"
-    }
+    env_vars        = {}
+    secret_env_keys = {}
     ingress               = "INGRESS_TRAFFIC_ALL"
     allow_unauthenticated = true
     extra_invoker_members = []

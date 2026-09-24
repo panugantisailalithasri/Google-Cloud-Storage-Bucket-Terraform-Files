@@ -176,7 +176,7 @@ variable "cloud_run_services" {
 }
 
 variable "gemini_enterprise" {
-  description = "Gemini Enterprise identifiers injected as Cloud Run env vars."
+  description = "Gemini Enterprise identifiers written into the GCS config JSON."
   type = object({
     application_id     = string
     via_agent_id       = string
@@ -185,7 +185,7 @@ variable "gemini_enterprise" {
 }
 
 variable "observability" {
-  description = "Tracing settings injected as Cloud Run env vars."
+  description = "Tracing settings written into the GCS config JSON."
   type = object({
     via_tracing_enabled = bool
     traces_endpoint     = string
