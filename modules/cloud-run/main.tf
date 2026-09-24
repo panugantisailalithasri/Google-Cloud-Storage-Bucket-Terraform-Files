@@ -5,7 +5,6 @@ resource "google_cloud_run_v2_service" "this" {
   ingress              = var.ingress
   deletion_protection  = var.deletion_protection
   labels               = var.labels
-  invoker_iam_disabled = false
 
   template {
     service_account                  = var.service_account_email
@@ -111,10 +110,18 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   lifecycle {
+    # Do not replace the service. Traffic/client drift and invoker_iam_disabled
+    # have previously planned destroy+create of the same name. Image and env
+    # updates still apply in place as new revisions.
     ignore_changes = [
       client,
       client_version,
       traffic,
+      invoker_iam_disabled,
+      launch_stage,
+      annotations,
+      template[0].volumes,
+      template[0].containers[0].volume_mounts,
     ]
   }
 }
