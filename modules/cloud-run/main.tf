@@ -111,9 +111,10 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   lifecycle {
-    # Do not replace the service. Traffic/client drift and invoker_iam_disabled
-    # have previously planned destroy+create of the same name. Image and env
+    # Never delete the live service. A tainted instance still plans replace;
+    # prevent_destroy stops apply from removing Cloud Run. Image and env
     # updates still apply in place as new revisions.
+    prevent_destroy = true
     ignore_changes = [
       client,
       client_version,

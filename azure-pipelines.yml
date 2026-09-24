@@ -168,6 +168,17 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
+              # A failed Cloud Run delete leaves the address tainted. Taint
+              # always plans destroy+create. Clear taint, or drop from state
+              # only so import_existing re-attaches the live service. GCP is
+              # not deleted.
+              while IFS= read -r addr; do
+                [ -z "$addr" ] && continue
+                terraform -chdir="$STACK" untaint "$addr" \
+                  || terraform -chdir="$STACK" state rm "$addr" \
+                  || true
+              done < <(terraform -chdir="$STACK" state list 2>/dev/null | grep 'google_cloud_run_v2_service' || true)
+
               EXTRA_VAR_FILE_ARGS=()
               if { [ "$(environment)" = "dev" ] || [ "$(environment)" = "prod" ]; } && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
                 export REQUIRE_SECRET_PAYLOADS=1
@@ -274,6 +285,17 @@ stages:
                     terraform -chdir="$STACK" init -reconfigure \
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
+
+                    # A failed Cloud Run delete leaves the address tainted. Taint
+                    # always plans destroy+create. Clear taint, or drop from state
+                    # only so import_existing re-attaches the live service. GCP is
+                    # not deleted.
+                    while IFS= read -r addr; do
+                      [ -z "$addr" ] && continue
+                      terraform -chdir="$STACK" untaint "$addr" \
+                        || terraform -chdir="$STACK" state rm -lock=false "$addr" \
+                        || true
+                    done < <(terraform -chdir="$STACK" state list 2>/dev/null | grep 'google_cloud_run_v2_service' || true)
 
                     EXTRA_VAR_FILE_ARGS=()
                     if { [ "$(environment)" = "dev" ] || [ "$(environment)" = "prod" ]; } && { [ "$(productName)" = "via-supervisor" ] || [ "$(productName)" = "via-superagent" ]; }; then
