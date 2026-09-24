@@ -84,6 +84,20 @@ locals {
       : local.generated_config_objects[key]
     )
   }
+
+  # GCS has no real folders. Prefix objects make ff-freya-superagents-pac/prod/
+  # visible in the console even if the JSON is still waiting on Cloud SQL.
+  gcs_folder_prefixes = {
+    for item in flatten([
+      for key, obj in var.gcs_config_objects : [
+        for i in range(1, length(split("/", obj.object_name))) : {
+          id         = "${obj.bucket_key}:${join("/", slice(split("/", obj.object_name), 0, i))}"
+          bucket_key = obj.bucket_key
+          prefix     = join("/", slice(split("/", obj.object_name), 0, i))
+        }
+      ]
+    ]) : item.id => item
+  }
 }
 
 resource "google_project_service" "required" {
@@ -168,6 +182,15 @@ module "buckets" {
   )
 
   depends_on = [google_project_service.required]
+}
+
+resource "google_storage_bucket_object" "folders" {
+  for_each = local.gcs_folder_prefixes
+
+  bucket       = module.buckets[each.value.bucket_key].name
+  name         = "${each.value.prefix}/"
+  content      = " "
+  content_type = "application/x-www-form-urlencoded;charset=UTF-8"
 }
 
 resource "google_storage_bucket_object" "config" {
