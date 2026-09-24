@@ -170,7 +170,7 @@ The pipeline uses the ARM service connection `GCP_freyrai_service_role` to mint 
 1. Create a pipeline from `azure-pipelines.yml`.
 2. Ensure the ARM service connection `GCP_freyrai_service_role` exists and this pipeline is allowed to use it.
 3. Create ADO environments `gcp-dev` and `gcp-prod` (approval on prod).
-4. Create Library groups `via-supervisor-devsecops-secrets-GCP` / `via-superagent-devsecops-secrets-GCP` and `via-supervisor-prod-secrets-GCP` / `via-superagent-prod-secrets-GCP`. Authorize each group for the matching `gcp-dev` or `gcp-prod` environment. Prod required variables: `via-supervisor-prod-secret`; `via-superagent-prod-secret` and `via-superagent-prod-cognito`. Session/memory are optional — Terraform writes those from Cloud SQL.
+4. Library groups are **not** referenced in YAML (a missing group hides every stage). After you create `via-supervisor-devsecops-secrets-GCP` / `via-superagent-devsecops-secrets-GCP` or `via-supervisor-prod-secrets-GCP` / `via-superagent-prod-secrets-GCP`, link the matching group on the pipeline Variables tab and authorize it for `gcp-dev` or `gcp-prod`. Prod required variables: `via-supervisor-prod-secret`; `via-superagent-prod-secret` and `via-superagent-prod-cognito`. Session/memory are optional — Terraform writes those from Cloud SQL.
 5. Create the agent state bucket (`<productName>-tfstate`) once via `remote-backend/` before the first plan.
 6. Run with:
    - `productName`: agent folder (`via-supervisor`) → state bucket `via-supervisor-tfstate` and first name segment

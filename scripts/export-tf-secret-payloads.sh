@@ -46,7 +46,7 @@ if os.environ.get("REQUIRE_SECRET_PAYLOADS", "") == "1":
     missing = [key for key in required if not mapping.get(key)]
     if missing:
         print("Missing ADO secret payloads for: " + ", ".join(missing), file=sys.stderr)
-        print(f"Link variable group {group} to this pipeline and authorize it for the Apply environment.", file=sys.stderr)
+        print(f"Add variable group {group} on the pipeline Variables tab (not in YAML) and authorize it for the Apply environment.", file=sys.stderr)
         sys.exit(1)
 
 doc = {"secret_payloads": payloads}

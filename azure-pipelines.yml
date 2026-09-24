@@ -64,14 +64,9 @@ variables:
     value: azure-devops-provider-v3
   - name: gcpServiceAccountEmail
     value: ado-deployer-v3@freyr-ai.iam.gserviceaccount.com
-  - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
-    - group: via-supervisor-devsecops-secrets-GCP
-  - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'prod')) }}:
-    - group: via-supervisor-prod-secrets-GCP
-  - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
-    - group: via-superagent-devsecops-secrets-GCP
-  - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'prod')) }}:
-    - group: via-superagent-prod-secrets-GCP
+  # Do not attach Library groups here. A missing group fails YAML compile
+  # and hides every stage. Link the matching group on the pipeline Variables
+  # tab when it exists (via-*-devsecops-secrets-GCP or via-*-prod-secrets-GCP).
 
 pool:
   vmImage: ubuntu-latest
@@ -107,15 +102,6 @@ stages:
     jobs:
       - job: Plan
         displayName: Plan ${{ parameters.productName }} ${{ parameters.environment }}
-        variables:
-          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
-            - group: via-supervisor-devsecops-secrets-GCP
-          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'prod')) }}:
-            - group: via-supervisor-prod-secrets-GCP
-          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
-            - group: via-superagent-devsecops-secrets-GCP
-          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'prod')) }}:
-            - group: via-superagent-prod-secrets-GCP
         steps:
           - checkout: self
           - bash: |
@@ -226,15 +212,6 @@ stages:
       - deployment: Apply
         displayName: Apply ${{ parameters.productName }} ${{ parameters.environment }}
         environment: gcp-${{ parameters.environment }}
-        variables:
-          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'dev')) }}:
-            - group: via-supervisor-devsecops-secrets-GCP
-          - ${{ if and(eq(parameters.productName, 'via-supervisor'), eq(parameters.environment, 'prod')) }}:
-            - group: via-supervisor-prod-secrets-GCP
-          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'dev')) }}:
-            - group: via-superagent-devsecops-secrets-GCP
-          - ${{ if and(eq(parameters.productName, 'via-superagent'), eq(parameters.environment, 'prod')) }}:
-            - group: via-superagent-prod-secrets-GCP
         strategy:
           runOnce:
             deploy:
