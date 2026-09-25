@@ -240,7 +240,6 @@ module "sql" {
   ]
 }
 
-# Import an already-created Cloud Run service (DSO and prod). to= uses each.key only.
 import {
   for_each = {
     for key, svc in var.cloud_run_services : key => svc
