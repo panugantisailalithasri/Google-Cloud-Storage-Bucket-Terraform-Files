@@ -112,10 +112,8 @@ resource "google_cloud_run_v2_service" "this" {
 
   lifecycle {
     # Never delete the live service. A tainted instance still plans replace;
-    # prevent_destroy stops apply from removing Cloud Run. Image, env, and
-    # service_account updates still apply in place as new revisions.
-    # Do not ignore template.service_account — DSO was created with
-    # ado-deployer-v3 and must move to via-*-dso-sa.
+    # prevent_destroy stops apply from removing Cloud Run. Image and env
+    # updates still apply in place as new revisions.
     prevent_destroy = true
     ignore_changes = [
       client,

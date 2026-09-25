@@ -126,7 +126,7 @@ ADO sets `bucket=$(productName)-tfstate` and `prefix=$(environment)` automatical
 - IAM: no service account keys; owner/editor/viewer rejected
 - Secrets: Terraform creates the secret resource only — no payloads in tfvars
 - Superagent Cloud Run is not publicly invokable; invoker is `via-supervisor-dso-sa`
-- Cloud Run runtime identities are the existing `via-supervisor-dso-sa` and `via-superagent-dso-sa` (secretAccessor on their secrets, Direct VPC to SQL private IPs). `ado-deployer-v3` is the pipeline apply identity only — not the Cloud Run revision SA. DSO/prod Cloud Run is imported if it already exists, then the revision is updated in place to the dso SA.
+- Cloud Run runtime identities are the existing `via-supervisor-dso-sa` and `via-superagent-dso-sa` (secretAccessor on their secrets, Direct VPC to SQL private IPs)
 - Supervisor Cloud Run allows `allUsers` because Cognito OAuth is enforced in the application
 - Cloud SQL has no public IP; private VPC only
 - State buckets: same private bucket module; `force_destroy` is false

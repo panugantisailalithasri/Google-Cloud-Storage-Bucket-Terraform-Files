@@ -167,13 +167,15 @@ stages:
                 -backend-config="bucket=$(stateBucket)" \
                 -backend-config="prefix=$(statePrefix)"
 
-              # Only untaint if Cloud Run is actually tainted. Do not state rm:
-              # untaint fails on a clean address and the old || state rm dropped
-              # the live service from state every run. DSO then planned create
-              # instead of updating the runtime SA to via-*-dso-sa.
+              # A failed Cloud Run delete leaves the address tainted. Taint
+              # always plans destroy+create. Clear taint, or drop from state
+              # only so import_existing re-attaches the live service. GCP is
+              # not deleted.
               while IFS= read -r addr; do
                 [ -z "$addr" ] && continue
-                terraform -chdir="$STACK" untaint "$addr" || true
+                terraform -chdir="$STACK" untaint "$addr" \
+                  || terraform -chdir="$STACK" state rm "$addr" \
+                  || true
               done < <(terraform -chdir="$STACK" state list 2>/dev/null | grep 'google_cloud_run_v2_service' || true)
 
               EXTRA_VAR_FILE_ARGS=()
@@ -283,13 +285,15 @@ stages:
                       -backend-config="bucket=$(stateBucket)" \
                       -backend-config="prefix=$(statePrefix)"
 
-                    # Only untaint if Cloud Run is actually tainted. Do not state rm:
-                    # untaint fails on a clean address and the old || state rm dropped
-                    # the live service from state every run. DSO then planned create
-                    # instead of updating the runtime SA to via-*-dso-sa.
+                    # A failed Cloud Run delete leaves the address tainted. Taint
+                    # always plans destroy+create. Clear taint, or drop from state
+                    # only so import_existing re-attaches the live service. GCP is
+                    # not deleted.
                     while IFS= read -r addr; do
                       [ -z "$addr" ] && continue
-                      terraform -chdir="$STACK" untaint "$addr" || true
+                      terraform -chdir="$STACK" untaint "$addr" \
+                        || terraform -chdir="$STACK" state rm "$addr" \
+                        || true
                     done < <(terraform -chdir="$STACK" state list 2>/dev/null | grep 'google_cloud_run_v2_service' || true)
 
                     EXTRA_VAR_FILE_ARGS=()
