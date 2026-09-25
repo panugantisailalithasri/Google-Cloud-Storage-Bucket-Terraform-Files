@@ -114,6 +114,9 @@ cloud_run_services = {
     allow_unauthenticated = false
     extra_invoker_members = ["serviceAccount:via-supervisor-dso-sa@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = false
+    # Live via-superagent-devsecops-run may still have ado-deployer-v3. Import
+    # it and update the revision to via-superagent-dso-sa (no destroy).
+    import_existing       = true
   }
 }
 

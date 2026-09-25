@@ -138,6 +138,9 @@ cloud_run_services = {
     allow_unauthenticated = true
     extra_invoker_members = []
     deletion_protection   = false
+    # Live via-supervisor-devsecops-run still has ado-deployer-v3. Import it
+    # and update the revision to via-supervisor-dso-sa (no destroy).
+    import_existing       = true
   }
 }
 
