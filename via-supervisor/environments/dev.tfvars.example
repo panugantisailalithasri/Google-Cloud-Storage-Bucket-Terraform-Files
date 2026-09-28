@@ -138,6 +138,8 @@ cloud_run_services = {
     allow_unauthenticated = true
     extra_invoker_members = []
     deletion_protection   = false
+    # Live via-supervisor-devsecops-run already exists. Import it; do not create.
+    import_existing       = true
   }
 }
 

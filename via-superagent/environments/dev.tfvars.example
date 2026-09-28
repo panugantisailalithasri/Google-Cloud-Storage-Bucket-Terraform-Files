@@ -114,6 +114,8 @@ cloud_run_services = {
     allow_unauthenticated = false
     extra_invoker_members = ["serviceAccount:via-supervisor-dso-sa@freyr-ai.iam.gserviceaccount.com"]
     deletion_protection   = false
+    # Live via-superagent-devsecops-run already exists. Import it; do not create.
+    import_existing       = true
   }
 }
 
