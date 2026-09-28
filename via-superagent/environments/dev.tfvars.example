@@ -50,18 +50,20 @@ buckets = {
 
 secrets = {
   superagent = {
-    resource_name = "secret"
+    resource_name   = "secret"
+    import_existing = true
   }
   superagent_session = {
     resource_name = "session"
   }
   cognito = {
-    resource_name = "cognito"
+    resource_name   = "cognito"
+    import_existing = true
   }
 }
 
-# App + cognito payloads come from ADO via-superagent-devsecops-secrets-GCP.
-# session JSON is written by Terraform (private IP + via_superagent).
+# via-superagent-devsecops-secret and cognito already exist. Terraform
+# imports them and does not add versions. session JSON is written from Cloud SQL.
 secret_payloads = {}
 
 gcs_config_objects = {

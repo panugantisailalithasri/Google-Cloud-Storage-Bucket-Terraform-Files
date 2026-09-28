@@ -111,9 +111,8 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   lifecycle {
-    # Never delete the live service. A tainted instance still plans replace;
-    # prevent_destroy stops apply from removing Cloud Run. Image and env
-    # updates still apply in place as new revisions.
+    # Never delete or replace the live service. After import, do not push a
+    # new revision for template drift (that overwrote DSO supervisor).
     prevent_destroy = true
     ignore_changes = [
       client,
@@ -122,8 +121,7 @@ resource "google_cloud_run_v2_service" "this" {
       invoker_iam_disabled,
       launch_stage,
       annotations,
-      template[0].volumes,
-      template[0].containers[0].volume_mounts,
+      template,
     ]
   }
 }

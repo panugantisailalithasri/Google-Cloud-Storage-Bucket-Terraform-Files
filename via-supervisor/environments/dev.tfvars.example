@@ -53,7 +53,9 @@ buckets = {
 
 secrets = {
   supervisor = {
-    resource_name = "secret"
+    resource_name   = "secret"
+    # Already in GCP. Import it. Do not add or replace versions.
+    import_existing = true
   }
   supervisor_session = {
     resource_name = "session"
@@ -63,8 +65,8 @@ secrets = {
   }
 }
 
-# App secret (supervisor) comes from ADO via-supervisor-devsecops-secrets-GCP.
-# session + memory JSON is written by Terraform (private IP + app user).
+# via-supervisor-devsecops-secret already exists. Terraform imports it and
+# does not add a version. session + memory JSON is written from Cloud SQL.
 # Never put real secret values in this file.
 secret_payloads = {}
 

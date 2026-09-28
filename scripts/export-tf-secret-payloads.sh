@@ -26,10 +26,9 @@ if product == "via-supervisor":
         "supervisor_memory": os.environ.get("VIA_SUPERVISOR_MEMORY", ""),
     }
     # Session/memory JSON is written by Terraform from Cloud SQL private IPs + app users.
-    # Prod via-supervisor-prod-secret was created in the console — never send it.
-    if secret_env == "prod":
-        mapping.pop("supervisor", None)
-    required = [] if secret_env == "prod" else ["supervisor"]
+    # via-supervisor-*-secret already exists — never send it (DSO or prod).
+    mapping.pop("supervisor", None)
+    required = []
     group = f"via-supervisor-{secret_env}-secrets-GCP"
 elif product == "via-superagent":
     mapping = {
@@ -37,17 +36,23 @@ elif product == "via-superagent":
         "superagent_session": os.environ.get("VIA_SUPERAGENT_SESSION", ""),
         "cognito": os.environ.get("VIA_SUPERAGENT_COGNITO", ""),
     }
-    # Prod via-superagent-prod-secret and via-superagent-prod-cognito are console-created.
-    if secret_env == "prod":
-        mapping.pop("superagent", None)
-        mapping.pop("cognito", None)
-    required = [] if secret_env == "prod" else ["superagent", "cognito"]
+    # via-superagent-*-secret and cognito already exist — never send them.
+    mapping.pop("superagent", None)
+    mapping.pop("cognito", None)
+    required = []
     group = f"via-superagent-{secret_env}-secrets-GCP"
 else:
     print("PRODUCT_NAME must be via-supervisor or via-superagent", file=sys.stderr)
     sys.exit(1)
 
-payloads = {key: value for key, value in mapping.items() if value}
+def usable(value):
+    text = (value or "").strip()
+    # Unexpanded ADO macros must not become Secret Manager versions.
+    if not text or (text.startswith("$(") and text.endswith(")")):
+        return False
+    return True
+
+payloads = {key: value for key, value in mapping.items() if usable(value)}
 
 if os.environ.get("REQUIRE_SECRET_PAYLOADS", "") == "1":
     missing = [key for key in required if not mapping.get(key)]
