@@ -62,7 +62,7 @@ The remote-backend bucket stays `<product_name>-tfstate` (not env-scoped). State
 | --- | --- |
 | Cloud Run | Supervisor (public invoke; Cognito in-app) and superagent (invoker = supervisor SA) |
 | GCS | One config bucket per product |
-| Secrets | Supervisor/superagent secret, session, memory, cognito. Session/memory versions are written by Terraform with the SQL private IP and app-user password (`via_supervisor`, `via_supervisor_memory`, `via_superagent`). Production imports console-created `via-supervisor-prod-secret`, `via-superagent-prod-secret`, and `via-superagent-prod-cognito`. |
+| Secrets | Supervisor/superagent secret, session, memory, cognito. Session/memory versions are written by Terraform with the SQL private IP and app-user password (`via_supervisor`, `via_supervisor_memory`, `via_superagent`). DSO and Production import existing `via-*-secret` (and superagent cognito) and do not add or replace those versions. A new agent with no secret yet can omit `import_existing` so the first apply writes the ADO Library value once. |
 | Cloud SQL | All instances are **ENTERPRISE** (not ENTERPRISE_PLUS). Supervisor DevSecOps: `via-supervisor-devsecops-sql` (sessions, 10 GB) and `via-supervisor-devsecops-memory-sql` (pgvector / `mem0_db`, 53 GB). Superagent has its own SQL instance. Production: supervisor sql + memory-sql (53 GB). |
 | VPC / subnet | DevSecOps: `freya-ai-dev-vpc` / `freya-ai-dev-subnet-us-east4` (Service Networking already present). Production: `freya-ai-prod-vpc` / `freya-ai-prod-subnet-us-east4` (`10.150.0.0/20`). Supervisor prod creates the Cloud SQL private-services range `10.151.0.0/16` (`via-supervisor-prod-sql-peering`). |
 
