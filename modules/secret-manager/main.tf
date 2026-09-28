@@ -33,12 +33,12 @@ resource "google_secret_manager_secret_iam_member" "accessor" {
   member    = each.value.member
 }
 
+# Payload changes create a new version. ABANDON leaves the previous GCP
+# version (do not delete via-supervisor-devsecops-secret versions).
 resource "google_secret_manager_secret_version" "this" {
   for_each = toset(nonsensitive(keys(var.secret_payloads)))
 
   secret          = google_secret_manager_secret.this[each.key].id
   secret_data     = var.secret_payloads[each.key]
-  # If Terraform replaces a version (payload change), leave the old GCP
-  # version in place. Do not delete via-*-secret versions.
   deletion_policy = "ABANDON"
 }
