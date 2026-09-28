@@ -8,6 +8,10 @@ resource "google_secret_manager_secret" "this" {
   replication {
     auto {}
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_secret_manager_secret_iam_member" "accessor" {
@@ -32,6 +36,9 @@ resource "google_secret_manager_secret_iam_member" "accessor" {
 resource "google_secret_manager_secret_version" "this" {
   for_each = toset(nonsensitive(keys(var.secret_payloads)))
 
-  secret      = google_secret_manager_secret.this[each.key].id
-  secret_data = var.secret_payloads[each.key]
+  secret          = google_secret_manager_secret.this[each.key].id
+  secret_data     = var.secret_payloads[each.key]
+  # If Terraform replaces a version (payload change), leave the old GCP
+  # version in place. Do not delete via-*-secret versions.
+  deletion_policy = "ABANDON"
 }
