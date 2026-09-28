@@ -111,18 +111,11 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   lifecycle {
-    # Never delete or replace the live service. After import, do not push a
-    # new revision for template drift (that overwrote DSO supervisor).
+    # Import the live service and leave it alone. Updating the service
+    # published via-supervisor-devsecops-run-00011, which never listened
+    # on PORT=8000. Do not create another revision.
     prevent_destroy = true
-    ignore_changes = [
-      client,
-      client_version,
-      traffic,
-      invoker_iam_disabled,
-      launch_stage,
-      annotations,
-      template,
-    ]
+    ignore_changes  = all
   }
 }
 
